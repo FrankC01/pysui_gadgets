@@ -1,0 +1,7 @@
+# Standard and OS gunk
+env/
+__pycache__
+.vscode
+.DS_Store
+temp.py
+gadgets.egg-info/
