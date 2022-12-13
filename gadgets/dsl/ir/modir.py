@@ -14,10 +14,8 @@
 """pysui_gadgets: DSL - Module Interpreter."""
 
 
-import os
-from pathlib import Path
 from typing import Any, Iterator, Union
-from dataclasses import dataclass, field
+
 
 from pysui.sui import SuiConfig, SuiClient
 from pysui.sui.sui_types import (
@@ -32,73 +30,11 @@ from pysui.sui.sui_types import (
 )
 
 from gadgets.utils import filters
-
-
-@dataclass
-class FieldIR:
-    """."""
-
-    name: str
-    type_signature: str
-
-
-@dataclass
-class StructIR:
-    """."""
-
-    name: str
-    fields: list[FieldIR] = field(default_factory=list)
-
-
-@dataclass
-class FunctionIR:
-    """."""
-
-    name: str
-    args: list[FieldIR] = field(default_factory=list)
-
-
-@dataclass
-class ModuleIR:
-    """."""
-
-    name: str
-    structs: list[StructIR] = field(default_factory=list)
-    functions: list[FunctionIR] = field(default_factory=list)
-
-    def structure_for(self, struct_name: str) -> Union[None, StructIR, Exception]:
-        """."""
-        finder = list(filter(lambda x: x.name == struct_name, self.structs))
-        if finder:
-            if len(finder) == 1:
-                return finder[0]
-            raise AttributeError(f"{struct_name} exists more than once in {self.name}")
-        return None
-
-
-@dataclass
-class PackageIR:
-    """."""
-
-    name: str
-    modules: list[ModuleIR] = field(default_factory=list)
-
-    def module_for(self, module_name: str) -> Union[None, ModuleIR, Exception]:
-        """."""
-        finder = list(filter(lambda x: x.name == module_name, self.modules))
-        if finder:
-            if len(finder) == 1:
-                return finder[0]
-            raise AttributeError(f"{module_name} exists more than once in {self.name}")
-        return None
+from gadgets.dsl.ir.ir_types import PackageIR, ModuleIR, FunctionIR, StructIR, FieldIR
 
 
 class Package:
     """."""
-
-    TEMPLATE_PATH: Path = Path(os.path.abspath(__file__)).parent.joinpath("templates")
-    MODEL_PATH = TEMPLATE_PATH.joinpath("model.py")
-    CLASS_PATH = TEMPLATE_PATH.joinpath("classes.py")
 
     def __init__(self, package_id: ObjectID, package: SuiPackage):
         """Initializer."""
@@ -185,7 +121,7 @@ class IRBuilder:
                         in_str += f"Don't know {ftype}"
             elif isinstance(ftype, SuiParameterStruct):
                 if ftype.name == "UID":
-                    in_str += "ObjectID"
+                    in_str += "str"
                 elif ftype.name == "String":
                     in_str += "str"
                 else:
@@ -213,6 +149,8 @@ class IRBuilder:
     def _func_sig(self, mod_ir: ModuleIR, field_type: Any) -> str:
         """."""
         if isinstance(field_type, SuiParameterStruct):
+            if field_type.name == "TxContext":
+                return None
             if mod_ir.structure_for(field_type.name):
                 arg_str = field_type.name
             else:
@@ -229,7 +167,8 @@ class IRBuilder:
                     arg_str = "SuiAddress"
                 case _:
                     arg_str = f"Don't know {field_type.scalar_type}"
-
+        elif isinstance(field_type, SuiMoveVector):
+            arg_str = "SuiArray"
         else:
             arg_str = f"No IDEA {field_type}"
 
@@ -242,11 +181,13 @@ class IRBuilder:
             field_index = 0
             field_list = []
             for parm in func_def.parameters:
-                field_list.append(FieldIR(f"arg_{field_index}", self._func_sig(mod_ir, parm)))
-                field_index += 1
+                asig = self._func_sig(mod_ir, parm)
+                if asig:
+                    field_list.append(FieldIR(f"arg_{field_index}", asig))
+                    field_index += 1
             self.package_ir.add_function(module_name, FunctionIR(func_name, field_list))
 
-    def generate_ir(self) -> bool:
+    def generate_ir(self) -> PackageIR:
         """generate_ir Generates modules structs and classes.
 
         :return: True if successful
@@ -267,5 +208,5 @@ class IRBuilder:
         # We want all entry point only FunctionIR with FieldIRs
         for mod_name, mod_def in modules:
             self._func_ir(mod_name, filters.filter_entry_points(mod_def))
-        print(self.package_ir.package_data)
-        return True
+        # print(self.package_ir.package_data)
+        return self.package_ir.package_data

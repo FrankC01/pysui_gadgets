@@ -13,15 +13,16 @@
 
 """pysui_gadgets: DSL Generates etc., etc., etc."""
 
-import ast
-import copy
 import os
 import sys
 from pathlib import Path
+from pysui.sui import SuiConfig
 from gadgets.dsl.cmdline import build_parser
-from gadgets.dsl.generators.struct_gen import StructGen
-from gadgets.dsl.modir import IRBuilder
-from pysui.sui import SuiClient, SuiConfig
+from gadgets.dsl.ir.modir import IRBuilder
+from gadgets.dsl.generators.package_gen import PackageGen
+
+_TEMPLATE_PATH: Path = Path(os.path.abspath(__file__)).parent.joinpath("templates")
+_MODEL_PATH = _TEMPLATE_PATH.joinpath("sync_model.py")
 
 
 def main():
@@ -43,34 +44,20 @@ def main():
     try:
         parsed.excludes = set(parsed.excludes) if parsed.excludes else set()
         parsed.includes = set(parsed.includes) if parsed.includes else set()
-        modir = IRBuilder(config=cfg, package=parsed.package_id, includes=parsed.includes, excludes=parsed.excludes)
-        modir.generate_ir()
+        ir_builder = IRBuilder(
+            config=cfg, package=parsed.package_id, includes=parsed.includes, excludes=parsed.excludes
+        )
+        package_gen = PackageGen(
+            package_ir=ir_builder.generate_ir(),
+            target_path=Path(os.path.expanduser("~/")),
+            template_path=_MODEL_PATH,
+        )
+        package_gen.generate()
+
+    except AttributeError as atterr:
+        print(f"{atterr.args}")
     except ValueError as valerr:
         print(f"{valerr.args}")
-    # Load the struct templates
-    # inpath = Path(os.path.abspath(__file__)).parent
-
-    # template_path = inpath.joinpath("templates")
-    # model_path = template_path.joinpath("model.py")
-    # _class_path = template_path.joinpath("classes.py")
-    # with open(model_path, "rt", encoding="utf-8") as source:
-    #     code = source.read()
-    # program = ast.parse(code, type_comments=True)
-    # # For structs we:
-    # # duplicate the classdef ast for each struct we want to create
-    # #   filter program body to find classdef instance:
-    # cdef = program.body.pop()
-    # structs = [StructGen("First", [("one", "str"), ("two", "ObjectID"), ("three", "SuiAddress")])]
-    # if cdef:
-    #     cdef_list = [copy.deepcopy(cdef)]
-    #     # For each class we step the structure generator
-    #     index = 0
-    #     while index < len(cdef_list):
-    #         structs[index].build(cdef_list[index])
-    #         index += 1
-    #     program.body.extend(cdef_list)
-    # topy = ast.unparse(program)
-    # print(topy)
 
 
 if __name__ == "__main__":
