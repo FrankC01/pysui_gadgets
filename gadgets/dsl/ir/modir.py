@@ -24,7 +24,6 @@ from pysui.sui.sui_types import (
     SuiMoveField,
     SuiParameterStruct,
     SuiParameterReference,
-    SuiMoveParameterType,
     SuiMoveScalarArgument,
     SuiMoveVector,
 )
@@ -105,45 +104,54 @@ class IRBuilder:
         else:
             raise ValueError(f"Getting package {package.value} error {getp_result.result_string}")
 
-    def _field_type_signature(self, field_ref: SuiMoveField, field_str: str = "") -> str:
+    def _struct_field_type(self, field_ref: SuiMoveField) -> FieldIR:
         """."""
 
-        def _field_type(ftype: Any, in_str: str) -> str:
-            if isinstance(ftype, str):
-                match ftype:
-                    case "U8" | "U16" | "U32" | "U64" | "U128" | "U256":
-                        in_str += "int"
-                    case "Bool":
-                        in_str += "bool"
-                    case "Address":
-                        in_str += "SuiAddress"
-                    case _:
-                        in_str += f"Don't know {ftype}"
-            elif isinstance(ftype, SuiParameterStruct):
-                if ftype.name == "UID":
-                    in_str += "str"
-                elif ftype.name == "String":
-                    in_str += "str"
-                else:
-                    in_str += "Any"
-                # in_str += f"{ftype.name} (see {ftype.address}::{ftype.module})"
-            elif isinstance(ftype, SuiMoveVector):
-                in_str += "list["
-                in_str = _field_type(ftype.vector_of, in_str)
-                in_str += "]"
-            elif isinstance(ftype, SuiMoveParameterType):
-                in_str += "ObjectID"
-            else:
-                in_str += f" figuring it out {type(ftype)}"
-            return in_str
+        def _field_type(ftype: Any, field_ir: FieldIR) -> str:
+            type_name = type(ftype).__name__
+            match type_name:
+                case "str":
+                    field_ir.meta = ftype
+                    match ftype:
+                        case "U8" | "U16" | "U32" | "U64" | "U128" | "U256":
+                            field_ir.type_signature = "str"
+                            field_ir.as_arg_converter = "f(lambda x: to_sui_string(x))(self.{field_ir.name})"
+                            # field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
+                            field_ir.as_type_converter = f"to_sui_integer(self.{field_ir.name})"
+                        case "Bool":
+                            field_ir.type_signature = "bool"
+                            field_ir.as_arg_converter = f"pass_through(self.{field_ir.name})"
+                            field_ir.as_type_converter = f"bool_to_sui_boolean(self.{field_ir.name})"
+                        case _:
+                            field_ir.type_signature = "str"
+                            field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
+                            raise AttributeError(f"Unable to service {ftype}")
+                case "SuiParameterStruct":
+                    field_ir.meta = ftype.name
+                    field_ir.type_signature = "str"
+                case "SuiMoveVector":
+                    field_ir.type_signature = "list["
+                    inner = _field_type(ftype.vector_of, FieldIR(name="spare"))
+                    field_ir.type_signature += inner.type_signature
+                    field_ir.type_signature += "]"
+                    field_ir.meta = f"vector[{inner.meta}]"
+                    field_ir.as_arg_converter = f"to_sui_string_array(self.{field_ir.name})"
+                case "SuiMoveParameterType":
+                    field_ir.meta = ftype.name
+                    field_ir.type_signature = "str"
+                    field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
+                    field_ir.as_type_converter = f"to_object_id(self.{field_ir.name})"
+                case _:
+                    raise AttributeError(f" Can't figure  it out {type(ftype)}")
+            return field_ir
 
-        field_str += _field_type(field_ref.type_, "")
-        return field_str
+        field_ir = FieldIR(name=field_ref.name)
+        return _field_type(field_ref.type_, field_ir=field_ir)
 
     def _struct_ir(self, module_name: str, key_structs: Iterator):
         """."""
         for struct_name, struct_def in key_structs:
-            fields = [FieldIR(field.name, self._field_type_signature(field)) for field in struct_def.fields]
+            fields = [self._struct_field_type(field) for field in struct_def.fields]
             self.package_ir.add_struct(module_name, StructIR(struct_name, fields))
 
     def _func_sig(self, mod_ir: ModuleIR, field_type: Any) -> str:

@@ -24,8 +24,11 @@ class FieldIR:
     Used for both structs and functions.
     """
 
-    name: str
-    type_signature: str
+    name: str = field(default_factory=str)
+    type_signature: str = field(default_factory=str)
+    meta: str = field(default_factory=str)
+    as_arg_converter: str = field(default_factory=str)
+    as_type_converter: str = field(default_factory=str)
 
 
 @dataclass
