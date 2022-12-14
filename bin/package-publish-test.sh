@@ -9,8 +9,9 @@ if test "$base_dir" = "pysui_gadgets";
 then
     echo "Publishing to testpypi"
     tout=$(twine check "dist/*")
+    echo $tout
     if echo $tout | grep -q "PASSED"; then
-        echo "Valid build... uploading to pypi"
+        echo "Valid build... uploading to test pypi"
         tout=$(twine upload -r testpypi "dist/*")
         if echo $tout | grep -q "ERROR"; then
             echo "Publish failed. Fix errors and rerun"
