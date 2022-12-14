@@ -1,0 +1,11 @@
+# pyproject.toml
+[tool.pytest.ini_options]
+testpaths = [
+    "tests/unit",
+    "tests/integration",
+]
+pythonpath = ["pysui_gadgets", "package", "dsl","utils"]
+
+[build-system]
+requires = ["setuptools>=61.0","wheel"]
+build-backend = "setuptools.build_meta"

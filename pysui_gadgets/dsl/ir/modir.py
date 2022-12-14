@@ -28,8 +28,8 @@ from pysui.sui.sui_types import (
     SuiMoveVector,
 )
 
-from gadgets.utils import filters
-from gadgets.dsl.ir.ir_types import PackageIR, ModuleIR, FunctionIR, StructIR, FieldIR
+from pysui_gadgets.utils import filters
+from pysui_gadgets.dsl.ir.ir_types import PackageIR, ModuleIR, FunctionIR, StructIR, FieldIR
 
 
 class Package:
@@ -115,32 +115,43 @@ class IRBuilder:
                     match ftype:
                         case "U8" | "U16" | "U32" | "U64" | "U128" | "U256":
                             field_ir.type_signature = "str"
-                            field_ir.as_arg_converter = "f(lambda x: to_sui_string(x))(self.{field_ir.name})"
-                            # field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
-                            field_ir.as_type_converter = f"to_sui_integer(self.{field_ir.name})"
+                            field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"
+                            field_ir.arg_converter_returns = "SuiString"
+                            field_ir.as_type_converter = f"converter.to_sui_integer(self.{field_ir.name})"
+                            field_ir.type_converter_returns = "SuiInteger"
                         case "Bool":
                             field_ir.type_signature = "bool"
-                            field_ir.as_arg_converter = f"pass_through(self.{field_ir.name})"
-                            field_ir.as_type_converter = f"bool_to_sui_boolean(self.{field_ir.name})"
+                            field_ir.as_arg_converter = f"converter.bool_to_sui_boolean(self.{field_ir.name})"
+                            field_ir.arg_converter_returns = "SuiBoolean"
+                            field_ir.as_type_converter = f"converter.bool_to_sui_boolean(self.{field_ir.name})"
+                            field_ir.type_converter_returns = "SuiBoolean"
                         case _:
-                            field_ir.type_signature = "str"
-                            field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
+                            # field_ir.type_signature = "str"
+                            # field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"
                             raise AttributeError(f"Unable to service {ftype}")
                 case "SuiParameterStruct":
                     field_ir.meta = ftype.name
                     field_ir.type_signature = "str"
+                    if field_ir.name == "id" and ftype.name == "UID":
+                        field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"
+                        field_ir.arg_converter_returns = "SuiString"
+                        field_ir.as_type_converter = f"converter.to_object_id(self.{field_ir.name})"
+                        field_ir.type_converter_returns = "ObjectID"
                 case "SuiMoveVector":
                     field_ir.type_signature = "list["
                     inner = _field_type(ftype.vector_of, FieldIR(name="spare"))
                     field_ir.type_signature += inner.type_signature
                     field_ir.type_signature += "]"
                     field_ir.meta = f"vector[{inner.meta}]"
-                    field_ir.as_arg_converter = f"to_sui_string_array(self.{field_ir.name})"
+                    field_ir.as_arg_converter = f"converter.to_sui_string_array(self.{field_ir.name})"
+                    field_ir.arg_converter_returns = "SuiArray"
+                    field_ir.as_type_converter = f"converter.to_sui_string_array(self.{field_ir.name})"
+                    field_ir.type_converter_returns = "SuiArray"
                 case "SuiMoveParameterType":
                     field_ir.meta = ftype.name
                     field_ir.type_signature = "str"
-                    field_ir.as_arg_converter = f"to_sui_string(self.{field_ir.name})"
-                    field_ir.as_type_converter = f"to_object_id(self.{field_ir.name})"
+                    field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"
+                    field_ir.as_type_converter = f"converter.to_object_id(self.{field_ir.name})"
                 case _:
                     raise AttributeError(f" Can't figure  it out {type(ftype)}")
             return field_ir

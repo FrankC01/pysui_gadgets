@@ -12,3 +12,9 @@
 # -*- coding: utf-8 -*-
 
 """Gadget package initializer."""
+
+import sys
+from pysui_gadgets.version import __version__
+
+if sys.version_info < (3, 10):
+    raise EnvironmentError("Python 3.10 or above is required")

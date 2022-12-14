@@ -33,6 +33,7 @@ from pysui import version
 from pysui.sui.sui_types import ObjectRead, ObjectID, SuiAddress, SuiString, SuiArray, SuiInteger
 from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
 from pysui.sui.sui_builders import MoveCall
+from pysui_gadgets.dsl.dsl_run import converter
 
 
 class _Inner(ABC):
@@ -64,17 +65,14 @@ class _Inner(ABC):
             return [x.data.type_arg for x in my_types]
         return SuiArray(my_types)
 
-    def stucture_call_args(self, in_params: dict) -> dict:
+    def to_call_args(self, in_params: dict) -> dict:
         """Convert raw argument dictionary to segregate arguments for move call parms."""
         # Start with static MoveCall builder parms
         in_args = {x: y for x, y in in_params.items() if x in self._MOVE_CALL_CONST_SET}
         not_in_args = {x: y for x, y in in_params.items() if x not in self._MOVE_CALL_CONST_SET}
         final_args = []
-        for arg in not_in_args.values():
-            if isinstance(arg, _Inner):
-                final_args.append(SuiString(arg.identifier.value))
-            else:
-                final_args.append(arg)
+        for arg_name, arg_value in not_in_args.items():
+            final_args.append(getattr(arg_value, f"{arg_name}_argument"))
         in_args["arguments"] = final_args
         in_args["type_arguments"] = self.type_args(not_in_args)
         return in_args
@@ -92,10 +90,6 @@ class _StructStub(_Inner):
         super().__init__()
         self.type_arg = type_arg
 
-    @property
-    def identifier(self) -> ObjectID:
-        return getattr(self, "id")
-
     @classmethod
     def instance(cls, from_details: ObjectRead):
         """Class thing."""
@@ -106,13 +100,17 @@ class _StructStub(_Inner):
             type_arg = SuiString("")
         # 0.3.0 workaround
         if version.__version__ == "0.3.0":
-            from_details.data.fields["id"] = ObjectID(from_details.data.fields["id"]["id"])
+            from_details.data.fields["id"] = from_details.data.fields["id"]["id"]
         else:
-            from_details.data.fields["id"] = ObjectID(from_details.data.fields["id"])
+            from_details.data.fields["id"] = from_details.data.fields["id"]
 
         instance = cls(type_arg, **from_details.data.fields)
         cls._INIT_FROM_CLASS = False
         return instance
+
+    @property
+    def _prop_stub(self) -> Any:
+        return None
 
 
 class _ModuleStub(_Inner):
@@ -131,4 +129,4 @@ class _ModuleStub(_Inner):
         """."""
         in_parms = locals()
         in_parms.pop("self")
-        return self.client.execute(MoveCall(**self.stucture_call_args(in_parms)))
+        return self.client.execute(MoveCall(**self.to_call_args(in_parms)))

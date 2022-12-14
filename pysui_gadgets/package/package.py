@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #    Copyright 2022 Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -36,8 +34,8 @@ from pysui.sui.sui_types import (
     SuiMovePackage,
 )
 
-from gadgets.package.cmdline import build_parser
-from gadgets.package.cmds import lists, structs, funcs
+from pysui_gadgets.package.cmdline import build_parser
+from pysui_gadgets.package.cmds import lists, structs, funcs
 
 
 def package(client: SuiClient, args: argparse.Namespace) -> Union[ValueError, SuiMovePackage]:

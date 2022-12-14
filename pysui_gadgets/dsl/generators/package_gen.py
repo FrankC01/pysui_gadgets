@@ -16,20 +16,30 @@
 import ast
 import copy
 from pathlib import Path
-from gadgets.dsl.ir.ir_types import PackageIR, ModuleIR, FunctionIR, StructIR
+from typing import Union
+from pysui_gadgets.dsl.ir.ir_types import PackageIR, ModuleIR, FunctionIR, StructIR
 
 
 class StructureGen:
     """."""
 
-    _STRUCTGEN_INIT: str = "__init__"
-    _STRUCTGEN_CLASSMETHOD: str = "instance"
+    _STRUCTGEN_INIT_METHOD: str = "__init__"
+    _STRUCTGEN_INSTANCE_METHOD: str = "instance"
+    _STRUCTGEN_PROPERTY_METHOD: str = "_prop_stub"
 
     def __init__(self, *, structure_irs: list[StructIR]):
         """."""
         self.struct_irs = structure_irs
 
-    def update_init(self, struct_ir: StructIR, node: ast.FunctionDef):
+    def _get_method_for(self, for_method: str, ast_node: ast.ClassDef) -> Union[ast.FunctionDef, Exception]:
+        """."""
+        for node in ast_node.body:
+            if isinstance(node, ast.FunctionDef):
+                if node.name == for_method:
+                    return node
+        raise AttributeError(f"No method found for {for_method}")
+
+    def update_init_node(self, struct_ir: StructIR, node: ast.FunctionDef) -> ast.FunctionDef:
         """_update_init Inserts __init__ parameters and property assignments.
 
         :param node: The AST __init__function definition
@@ -39,32 +49,60 @@ class StructureGen:
         node.args.args.extend([ast.arg(arg=x.name, annotation=ast.Name(id=x.type_signature)) for x in struct_ir.fields])
         # Add the assignments
         node.body.extend([ast.parse(f"self.{x.name}:{x.type_signature} = {x.name}").body[0] for x in struct_ir.fields])
+        return node
 
-    def update_loader(self, struct_ir: StructIR, node: ast.FunctionDef):
+    def update_instance_node(self, struct_ir: StructIR, node: ast.FunctionDef) -> ast.FunctionDef:
         """_update_loader Sets new struct class return type in classmethod.
 
         :param node: The AST get_instance classmethod function definition.
         :type node: ast.FunctionDef
         """
         node.returns = ast.Name(id=f'"{struct_ir.name}"')
-        # node.name = struct_ir.name
+        return node
 
-    def update_struct_ast(
-        self, struct_ir: StructIR, struct_init_node: ast.FunctionDef, struct_class_node: ast.FunctionDef
-    ):
+    def update_property_node(self, struct_ir: StructIR, node: ast.FunctionDef) -> list[ast.FunctionDef]:
         """."""
-        self.update_init(struct_ir, struct_init_node)
-        self.update_loader(struct_ir, struct_class_node)
+        new_props = []
+        for field in struct_ir.fields:
+            if field.arg_converter_returns or field.as_arg_converter:
+                as_arg_node = copy.deepcopy(node)
+                as_arg_node.name = f"{field.name}_argument"
+                if field.arg_converter_returns:
+                    as_arg_node.returns = ast.parse(field.arg_converter_returns)
+                if field.as_arg_converter:
+                    as_arg_node.body[0] = ast.parse(f"return {field.as_arg_converter}")
+                new_props.append(as_arg_node)
+            if field.type_converter_returns or field.as_type_converter:
+                as_type_node = copy.deepcopy(node)
+                as_type_node.name = f"{field.name}_suitype"
+                if field.type_converter_returns:
+                    as_type_node.returns = ast.parse(field.type_converter_returns)
+                if field.as_type_converter:
+                    as_type_node.body[0] = ast.parse(f"return {field.as_type_converter}")
+                new_props.append(as_type_node)
+        return new_props
+
+    def update_struct_ast(self, struct_ir: StructIR, ast_class_node: ast.ClassDef):
+        """."""
+        struct_init_node = self._get_method_for(self._STRUCTGEN_INIT_METHOD, ast_class_node)
+        struct_instance_node = self._get_method_for(self._STRUCTGEN_INSTANCE_METHOD, ast_class_node)
+        struct_property_node = self._get_method_for(self._STRUCTGEN_PROPERTY_METHOD, ast_class_node)
+        prop_index = ast_class_node.body.index(struct_property_node)
+        # Inline updates, ignore return
+        _ = self.update_init_node(struct_ir, struct_init_node)
+        # Inline updates, ignore return
+        _ = self.update_instance_node(struct_ir, struct_instance_node)
+        # This generates replacement property getters
+        props = self.update_property_node(struct_ir, struct_property_node)
+        ast_class_node.body.pop(prop_index)
+        ast_class_node.body.extend(props)
 
     def generate(self, *, ast_node: ast.ClassDef) -> list[ast.ClassDef]:
         """."""
         new_cd_set: list[ast.ClassDef] = []
         for struct in self.struct_irs:
             new_class_def = copy.deepcopy(ast_node)
-            func_nodes: list[ast.FunctionDef] = list(
-                filter(lambda x: isinstance(x, ast.FunctionDef), new_class_def.body)
-            )
-            self.update_struct_ast(struct, func_nodes[0], func_nodes[2])
+            self.update_struct_ast(struct, new_class_def)
             new_cd_set.append(new_class_def)
             new_class_def.name = struct.name
         return new_cd_set

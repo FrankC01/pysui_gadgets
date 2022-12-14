@@ -14,7 +14,7 @@
 """pysui-gadget: package command line parser."""
 import argparse
 
-from gadgets.utils.cmd_arg_validators import ValidateObjectID
+from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID
 
 
 def build_parser(in_args: list) -> argparse.Namespace:

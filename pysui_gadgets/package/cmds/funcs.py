@@ -26,7 +26,7 @@ from pysui.sui.sui_types import (
     SuiMoveModule,
 )
 
-from gadgets.utils.filters import (
+from pysui_gadgets.utils.filters import (
     filter_modules_excluding,
     filter_modules_with_including,
     filter_modules_with_entry_points,

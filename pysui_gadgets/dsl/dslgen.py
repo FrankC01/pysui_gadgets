@@ -17,9 +17,9 @@ import os
 import sys
 from pathlib import Path
 from pysui.sui import SuiConfig
-from gadgets.dsl.cmdline import build_parser
-from gadgets.dsl.ir.modir import IRBuilder
-from gadgets.dsl.generators.package_gen import PackageGen
+from pysui_gadgets.dsl.cmdline import build_parser
+from pysui_gadgets.dsl.ir.modir import IRBuilder
+from pysui_gadgets.dsl.generators.package_gen import PackageGen
 
 _TEMPLATE_PATH: Path = Path(os.path.abspath(__file__)).parent.joinpath("templates")
 _MODEL_PATH = _TEMPLATE_PATH.joinpath("sync_model.py")

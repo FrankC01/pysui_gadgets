@@ -12,5 +12,7 @@ Setup
 
 #. Install SUI binaries
 #. Optional: Setup and activate a pyton virtual environment
-#. Install ``pysui``
-#. Clone the ``pysui-gadgets`` repo
+#. Install ``pysui`` -> ``pip install pysui``
+.. code-block::
+    pip install pysui
+    pip install pysui_gadgets

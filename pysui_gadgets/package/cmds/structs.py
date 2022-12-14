@@ -24,7 +24,7 @@ from pysui.sui.sui_types import (
     SuiMoveParameterType,
 )
 
-from gadgets.utils import filters
+from pysui_gadgets.utils import filters
 
 
 def _struct_parm_types(holder: list, sig: str) -> str:
