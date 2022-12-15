@@ -121,9 +121,9 @@ class IRBuilder:
                             field_ir.type_converter_returns = "SuiInteger"
                         case "Bool":
                             field_ir.type_signature = "bool"
-                            field_ir.as_arg_converter = f"converter.bool_to_sui_boolean(self.{field_ir.name})"
+                            field_ir.as_arg_converter = f"converter.bool_sui_boolean(self.{field_ir.name})"
                             field_ir.arg_converter_returns = "SuiBoolean"
-                            field_ir.as_type_converter = f"converter.bool_to_sui_boolean(self.{field_ir.name})"
+                            field_ir.as_type_converter = f"converter.bool_sui_boolean(self.{field_ir.name})"
                             field_ir.type_converter_returns = "SuiBoolean"
                         case _:
                             # field_ir.type_signature = "str"

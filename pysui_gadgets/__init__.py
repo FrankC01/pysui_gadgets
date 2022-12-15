@@ -14,7 +14,14 @@
 """Gadget package initializer."""
 
 import sys
-from pysui_gadgets.version import __version__
+from pysui.version import __version__ as base_ver
+from pysui_gadgets.version import __version__ as gadget_ver
+
+pysui_ver = [int(x) for x in base_ver.split(".")]
+pysui_gadget_ver = [int(x) for x in gadget_ver.split(".")]
 
 if sys.version_info < (3, 10):
     raise EnvironmentError("Python 3.10 or above is required")
+
+if pysui_ver[1] < 4:
+    raise EnvironmentError(f"pysui 0.4.0 or above is required, found {base_ver}")

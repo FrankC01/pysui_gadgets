@@ -27,10 +27,9 @@ limitations under the License.
 """
 
 
-from abc import ABC, abstractmethod
-from typing import Any
+from abc import ABC
 from pysui import version
-from pysui.sui.sui_types import ObjectRead, ObjectID, SuiAddress, SuiString, SuiArray, SuiInteger
+from pysui.sui.sui_types import *
 from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
 from pysui.sui.sui_builders import MoveCall
 from pysui_gadgets.dsl.dsl_run import converter
@@ -51,28 +50,28 @@ class _Inner(ABC):
     def __init__(self):
         """Initialize."""
 
-    @property
-    @abstractmethod
-    def identifier(self) -> str:
-        """Return an identifier of class."""
-
     def type_args(self, args: dict) -> SuiArray:
         """."""
         my_types = list(
-            filter(lambda x: isinstance(x, _Inner) and hasattr(x, "type_arg") and getattr(x, "type_arg"), args.values())
+            filter(
+                lambda x: isinstance(x, _Inner) and not isinstance(x.type_arg, SuiNullType),
+                args.values(),
+            )
         )
         if my_types:
-            return [x.data.type_arg for x in my_types]
-        return SuiArray(my_types)
+            return [x.type_arg for x in my_types]
+        return my_types
 
     def to_call_args(self, in_params: dict) -> dict:
         """Convert raw argument dictionary to segregate arguments for move call parms."""
-        # Start with static MoveCall builder parms
-        in_args = {x: y for x, y in in_params.items() if x in self._MOVE_CALL_CONST_SET}
-        not_in_args = {x: y for x, y in in_params.items() if x not in self._MOVE_CALL_CONST_SET}
+        in_args = {x: y for (x, y) in in_params.items() if x in self._MOVE_CALL_CONST_SET}
+        not_in_args = {x: y for (x, y) in in_params.items() if x not in self._MOVE_CALL_CONST_SET}
         final_args = []
-        for arg_name, arg_value in not_in_args.items():
-            final_args.append(getattr(arg_value, f"{arg_name}_argument"))
+        for (_arg_name, arg_value) in not_in_args.items():
+            if isinstance(arg_value, _Inner):
+                final_args.append(getattr(arg_value, "id_argument"))
+            elif issubclass(arg_value.__class__, SuiScalarType):
+                final_args.append(SuiString(arg_value.value))
         in_args["arguments"] = final_args
         in_args["type_arguments"] = self.type_args(not_in_args)
         return in_args
@@ -94,22 +93,19 @@ class _StructStub(_Inner):
     def instance(cls, from_details: ObjectRead):
         """Class thing."""
         cls._INIT_FROM_CLASS = True
-        if from_details.data.type_arg:
+        if hasattr(from_details.data, "type_arg"):
             type_arg = SuiString(from_details.data.type_arg)
         else:
-            type_arg = SuiString("")
-        # 0.3.0 workaround
-        if version.__version__ == "0.3.0":
-            from_details.data.fields["id"] = from_details.data.fields["id"]["id"]
-        else:
-            from_details.data.fields["id"] = from_details.data.fields["id"]
+            type_arg = SuiNullType(None)
 
+        from_details.data.fields["id"] = from_details.data.fields["id"]
         instance = cls(type_arg, **from_details.data.fields)
         cls._INIT_FROM_CLASS = False
         return instance
 
     @property
-    def _prop_stub(self) -> Any:
+    def _prop_stub(self):
+        """Read property generated."""
         return None
 
 
@@ -127,6 +123,6 @@ class _ModuleStub(_Inner):
 
     def _mod_func_call(self, signer: SuiAddress, gas: ObjectID, gas_budget: SuiInteger) -> SuiRpcResult:
         """."""
-        in_parms = locals()
+        in_parms = locals().copy()
         in_parms.pop("self")
         return self.client.execute(MoveCall(**self.to_call_args(in_parms)))

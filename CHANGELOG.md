@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dslgen: Commands to generate Python DSL classes from SUI package modules
 
 ### Fixed
+- Typo in FieldIR return assignment
+- Attribute check in sync_model template `instance` method
+- For all generated XXXModule class methods, added `.copy()` to `locals()`
+- Fix list comprehension in sync_model `_Inner.type_args()`
+- If type_arg not in ObjectReadData, use `SuiNullType`
 
 ### Changed
 

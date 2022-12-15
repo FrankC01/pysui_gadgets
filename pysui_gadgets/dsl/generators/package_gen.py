@@ -68,17 +68,17 @@ class StructureGen:
                 as_arg_node = copy.deepcopy(node)
                 as_arg_node.name = f"{field.name}_argument"
                 if field.arg_converter_returns:
-                    as_arg_node.returns = ast.parse(field.arg_converter_returns)
+                    as_arg_node.returns = ast.parse(field.arg_converter_returns).body[0].value
                 if field.as_arg_converter:
-                    as_arg_node.body[0] = ast.parse(f"return {field.as_arg_converter}")
+                    as_arg_node.body[1] = ast.parse(f"return {field.as_arg_converter}")
                 new_props.append(as_arg_node)
             if field.type_converter_returns or field.as_type_converter:
                 as_type_node = copy.deepcopy(node)
                 as_type_node.name = f"{field.name}_suitype"
                 if field.type_converter_returns:
-                    as_type_node.returns = ast.parse(field.type_converter_returns)
+                    as_type_node.returns = ast.parse(field.type_converter_returns).body[0].value
                 if field.as_type_converter:
-                    as_type_node.body[0] = ast.parse(f"return {field.as_type_converter}")
+                    as_type_node.body[1] = ast.parse(f"return {field.as_type_converter}")
                 new_props.append(as_type_node)
         return new_props
 

@@ -15,7 +15,6 @@ Setup
 #. Activate virtual environment
 #. Update ``pip``
 #. Install ``pysui``
-#. Install ``pysui_gadgets``
 
 .. code-block::
 
@@ -23,5 +22,4 @@ Setup
     python3 -m venv env
     . env/bin/activate
     pip install -U pip
-    pip install pysui
-    pip install pysui_gadgets
+    pip install -r requirements.txt
