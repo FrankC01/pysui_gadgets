@@ -55,4 +55,28 @@ def build_parser(in_args: list) -> argparse.Namespace:
         help="Only include modules for DSL generation",
     )
 
+    parser.add_argument(
+        "-p",
+        "--generation-root-path",
+        dest="root_path",
+        required=True,
+        help="Identify root path to generate package and modules to",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--overwrite-target-files",
+        dest="overwrite_modules",
+        required=False,
+        action="store_true",
+        help="Overwrite existing files during generation",
+    )
+    parser.add_argument(
+        "-a",
+        "--generate-async",
+        dest="use_async",
+        required=False,
+        action="store_true",
+        help="Generate async module otherwise default to synchrounous",
+    )
     return parser.parse_args(in_args if in_args else ["--help"])

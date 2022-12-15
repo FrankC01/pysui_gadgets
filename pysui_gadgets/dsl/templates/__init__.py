@@ -1,4 +1,4 @@
-#    Copyright 2022 Frank V. Castellucci
+#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -11,4 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Generated module __init__.py ."""
+"""Generated __init__.py."""

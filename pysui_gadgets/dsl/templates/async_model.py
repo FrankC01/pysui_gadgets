@@ -29,7 +29,7 @@ limitations under the License.
 
 from abc import ABC
 from pysui.sui.sui_types import *
-from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
+from pysui.sui.sui_rpc import SuiAsynchClient, SuiRpcResult
 from pysui.sui.sui_builders import MoveCall
 from pysui_gadgets.dsl.dsl_run import converter
 
@@ -89,7 +89,7 @@ class _StructStub(_Inner):
         self.type_arg = type_arg
 
     @classmethod
-    def instance(cls, from_details: ObjectRead):
+    async def instance(cls, from_details: ObjectRead):
         """Class instantiation from module struct details."""
         cls._INIT_FROM_CLASS = True
         if hasattr(from_details.data, "type_arg") and from_details.data.type_arg:
@@ -109,7 +109,7 @@ class _StructStub(_Inner):
 class _ModuleStub(_Inner):
     """Generated from pysui-dsl modules FunctionIR entries."""
 
-    def __init__(self, client: SuiClient):
+    def __init__(self, client: SuiAsynchClient):
         """Initialize."""
         super().__init__()
         self.client = client
@@ -119,8 +119,8 @@ class _ModuleStub(_Inner):
         """Returns module identifier."""
         return getattr(self, "module_id")
 
-    def _mod_func_call(self, signer: SuiAddress, gas: ObjectID, gas_budget: SuiInteger) -> SuiRpcResult:
+    async def _mod_func_call(self, signer: SuiAddress, gas: ObjectID, gas_budget: SuiInteger) -> SuiRpcResult:
         """Generated from module entry point functions."""
         in_parms = locals().copy()
         in_parms.pop("self")
-        return self.client.execute(MoveCall(**self.to_call_args(in_parms)))
+        return await self.client.execute(MoveCall(**self.to_call_args(in_parms)))
