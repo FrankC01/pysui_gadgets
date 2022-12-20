@@ -125,6 +125,12 @@ class IRBuilder:
                             field_ir.arg_converter_returns = "SuiBoolean"
                             field_ir.as_type_converter = f"converter.bool_sui_boolean(self.{field_ir.name})"
                             field_ir.type_converter_returns = "SuiBoolean"
+                        case "Address":
+                            field_ir.type_signature = "str"
+                            field_ir.as_arg_converter = f"converter.to_sui_address(self.{field_ir.name})"
+                            field_ir.arg_converter_returns = "SuiAddress"
+                            field_ir.as_type_converter = f"converter.to_sui_address(self.{field_ir.name})"
+                            field_ir.type_converter_returns = "SuiAddress"
                         case _:
                             # field_ir.type_signature = "str"
                             # field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"

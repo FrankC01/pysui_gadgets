@@ -40,7 +40,7 @@ def main():
         cfg = SuiConfig.from_config_file(cfg_file[0])
     else:
         cfg = SuiConfig.default()
-    print(parsed)
+    # print(parsed)
     try:
         parsed.excludes = set(parsed.excludes) if parsed.excludes else set()
         parsed.includes = set(parsed.includes) if parsed.includes else set()

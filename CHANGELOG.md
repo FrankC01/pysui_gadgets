@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.0.4] - 2022-12-19
+
+### Added
+- SUI Address support
+
+### Fixed
+
+### Changed
+- Bumped to pysui 0.5.0
+
+### Removed
+
+
 ## [0.0.3] - 2022-12-15
 
 ### Added
