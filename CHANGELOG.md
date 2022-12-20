@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.0.5] - 2022-12-20
+
+### Added
+
+### Fixed
+
+### Changed
+- Bumped to pysui 0.5.1
+
+### Removed
+
 ## [0.0.4] - 2022-12-19
 
 ### Added
