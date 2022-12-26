@@ -34,6 +34,7 @@ Setup for cloning
 #. Activate virtual environment
 #. Update ``pip``
 #. Install ``pysui``
+#. Alternate install of ``pysui``
 
 .. code-block::
 
@@ -42,7 +43,13 @@ Setup for cloning
     python3 -m venv env
     . env/bin/activate
     pip install -U pip
+    # If 0.6.0 on PyPi
     pip install pysui
+    # Alternately
+    # clone pysui to other folder
+    # in pysui run bin/package-build.sh
+    # back in here
+    pip install ../path_to_pysui/
 
 
 Running gadgets
