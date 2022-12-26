@@ -16,7 +16,7 @@
 import os
 import sys
 from pathlib import Path
-from pysui.sui import SuiConfig
+from pysui.sui.sui_config import SuiConfig
 from pysui_gadgets.dsl.cmdline import build_parser
 from pysui_gadgets.dsl.ir.modir import IRBuilder
 from pysui_gadgets.dsl.generators.package_gen import PackageGen

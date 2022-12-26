@@ -14,7 +14,7 @@
 """List commands and utilities."""
 
 from argparse import Namespace
-from pysui.sui.sui_types import SuiMoveModule
+from pysui.sui.sui_txresults import SuiMoveModule
 
 
 def print_module_list(mods: dict[str, SuiMoveModule], args: Namespace) -> None:

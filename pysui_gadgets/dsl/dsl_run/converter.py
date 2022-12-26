@@ -14,14 +14,14 @@
 """DSL Generator init."""
 
 from typing import Any
-from pysui.sui.sui_types import (
+from pysui.sui.sui_types.scalars import (
     ObjectID,
-    SuiAddress,
     SuiString,
     SuiInteger,
     SuiBoolean,
-    SuiArray,
 )
+from pysui.sui.sui_types.collections import SuiArray
+from pysui.sui.sui_types.address import SuiAddress
 
 
 def pass_through(indata: Any) -> Any:

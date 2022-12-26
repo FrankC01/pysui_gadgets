@@ -18,7 +18,7 @@ Provides low level filtering options of raw return of modules, structs and funct
 
 import functools
 from typing import Iterator
-from pysui.sui.sui_types import (
+from pysui.sui.sui_txresults.package_meta import (
     SuiMoveFunction,
     SuiMoveModule,
     SuiMoveStruct,

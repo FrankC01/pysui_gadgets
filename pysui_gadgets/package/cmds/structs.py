@@ -15,7 +15,7 @@
 
 from argparse import Namespace
 from typing import Any
-from pysui.sui.sui_types import (
+from pysui.sui.sui_txresults.package_meta import (
     SuiMoveField,
     SuiMoveModule,
     SuiMoveStructTypeParameter,
@@ -89,8 +89,9 @@ def print_module_structs(modules: dict[str, SuiMoveModule], args: Namespace) -> 
             print(f"    {struct_name} {sig} {{")
 
             for field in struct_def.fields:
+                print("", end="")
                 print(field.to_json(indent=2))
                 sig = f"        {field.name:30s}: "
                 sig = _field_signature(field, sig)
-                print(sig)
-            print("     }")
+                # print(sig)
+            print("}")

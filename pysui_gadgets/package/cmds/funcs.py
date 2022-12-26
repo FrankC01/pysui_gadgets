@@ -16,7 +16,7 @@
 from argparse import Namespace
 from typing import Any
 
-from pysui.sui.sui_types import (
+from pysui.sui.sui_txresults.package_meta import (
     SuiMoveScalarArgument,
     SuiMoveVector,
     SuiParameterReference,

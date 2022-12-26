@@ -28,9 +28,13 @@ limitations under the License.
 
 
 from abc import ABC
-from pysui.sui.sui_types import *
-from pysui.sui.sui_rpc import SuiAsynchClient, SuiRpcResult
-from pysui.sui.sui_builders import MoveCall
+from pysui.sui.sui_types.scalars import *
+from pysui.sui.sui_types.collections import *
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui.sui.sui_clients import async_client
+from pysui.sui.sui_builders.exec_builders import MoveCall
+from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui_gadgets.dsl.dsl_run import converter
 
 
@@ -95,7 +99,7 @@ class _StructStub(_Inner):
         if hasattr(from_details.data, "type_arg") and from_details.data.type_arg:
             type_arg = SuiString(from_details.data.type_arg)
         else:
-            type_arg = SuiNullType(None)
+            type_arg = SuiNullType()
         instance = cls(type_arg, **from_details.data.fields)
         cls._INIT_FROM_CLASS = False
         return instance
@@ -109,10 +113,10 @@ class _StructStub(_Inner):
 class _ModuleStub(_Inner):
     """Generated from pysui-dsl modules FunctionIR entries."""
 
-    def __init__(self, client: SuiAsynchClient):
+    def __init__(self, client: async_client.SuiClient):
         """Initialize."""
         super().__init__()
-        self.client = client
+        self.client: async_client.SuiClient = client
 
     @property
     def identifier(self) -> SuiString:

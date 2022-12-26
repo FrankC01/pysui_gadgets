@@ -16,11 +16,11 @@
 
 from typing import Any, Iterator, Union
 
-
-from pysui.sui import SuiConfig, SuiClient
-from pysui.sui.sui_types import (
-    ObjectID,
-    SuiPackage,
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_txresults.single_tx import SuiPackage
+from pysui.sui.sui_txresults.package_meta import (
     SuiMoveField,
     SuiParameterStruct,
     SuiParameterReference,

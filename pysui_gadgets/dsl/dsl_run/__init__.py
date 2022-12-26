@@ -11,6 +11,6 @@
 
 # -*- coding: utf-8 -*-
 
-"""DSL Module Generation init."""
+"""DSL Module Helpers init."""
 
 from pysui_gadgets.dsl.dsl_run.converter import *

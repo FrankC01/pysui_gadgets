@@ -29,10 +29,9 @@ import sys
 
 from typing import Union
 
-from pysui.sui import SuiConfig, SuiClient
-from pysui.sui.sui_types import (
-    SuiMovePackage,
-)
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_txresults import SuiMovePackage
 
 from pysui_gadgets.package.cmdline import build_parser
 from pysui_gadgets.package.cmds import lists, structs, funcs

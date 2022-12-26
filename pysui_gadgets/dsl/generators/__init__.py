@@ -11,4 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Builder initializer."""
+"""Generators initializer."""
