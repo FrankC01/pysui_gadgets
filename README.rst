@@ -7,6 +7,7 @@ Gadgets included:
 
 * package - Performs operations that leverages meta-data about SUI move packages (smart-contracts)
 * dsl-gen - Creates python representation of move package key structs and entry point functions
+* to-one - Merges all SUI Gas mists 'to one' SUI Gas object for an address
 
 Setup for use
 *************
@@ -59,3 +60,4 @@ Running gadgets
 
     package -h
     dsl-gen -h
+    to-one -h

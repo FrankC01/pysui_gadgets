@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""pysui-gadget: package command line parser."""
+"""pysui-gadget: DSL package command line parser."""
 import argparse
 
 from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID
