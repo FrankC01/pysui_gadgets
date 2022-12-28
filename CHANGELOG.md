@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unpublished]
 
 ### Added
+- `-s` argument to package genstructs command
 
 ### Fixed
 

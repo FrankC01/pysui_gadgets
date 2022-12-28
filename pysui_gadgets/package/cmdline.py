@@ -75,6 +75,14 @@ def build_parser(in_args: list) -> argparse.Namespace:
     subp.add_argument(
         "-m", "--move-package-id", required=True, help="The move package ObjectID on the chain", action=ValidateObjectID
     )
+    subp.add_argument(
+        "-s",
+        "--short-display",
+        required=False,
+        dest="short_form",
+        action="store_true",
+        help="Print structure short form",
+    )
     command_group = subp.add_mutually_exclusive_group()
     command_group.add_argument(
         "-e",
