@@ -87,14 +87,11 @@ def print_module_structs(modules: dict[str, SuiMoveModule], args: Namespace) -> 
             sig = _struct_parm_abilities(struct_def.type_parameters, "")
             sig += _struct_parm_types(struct_def.abilities.abilities, "")
             print(f"\nStruct: {struct_name} {sig} {{")
-            max_field_name = 0
-            for field in struct_def.fields:
-                if len(field.name) > max_field_name:
-                    max_field_name = len(field.name)
-            max_field_name += 1
-            for field in struct_def.fields:
-                if not args.short_form:
+            max_field_name = max([len(x.name) for x in struct_def.fields])
+            if not args.short_form:
+                for field in struct_def.fields:
                     print(field.to_json(indent=2))
-                else:
+            else:
+                for field in struct_def.fields:
                     print(f"    {field.name:{max_field_name}s}: {_field_signature(field,'')}")
             print("}")
