@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unpublished]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.0.6] - 2022-12-29
+
+### Added
 - `-s` argument to package genstructs command
 - `to_one` gadget that merges all SUI coins 'to one' for an address
 
