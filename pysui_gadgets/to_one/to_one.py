@@ -31,7 +31,7 @@ def _get_gas(client: sync_client.SuiClient, address: SuiAddress) -> SuiRpcResult
     coin_type = SuiString("0x2::sui::SUI")
     result = client.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
     if result.is_ok():
-        limit = SuiInteger(result.result_data.items[0].coin_object_count)
+        limit = SuiInteger(result.result_data.coin_object_count)
         result = client.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
     return result
 

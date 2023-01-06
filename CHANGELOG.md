@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.0.7] - 2023-01-06
+
+### Added
+
+### Fixed
+
+### Changed
+- Bumped dependencies for pysui to 0.7.0
+- Fetching address gas now using changes to SUI 0.20.0 and supported in pysui 0.7.0
+
+### Removed
+
 ## [0.0.6] - 2022-12-29
 
 ### Added
