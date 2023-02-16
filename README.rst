@@ -34,7 +34,7 @@ Setup for cloning
 #. Setup python virtual environment
 #. Activate virtual environment
 #. Update ``pip``
-#. Install ``pysui`` (note: Make sure minimum 0.7.0 of ``pysui`` is installed)
+#. Install ``pysui``
 #. Alternate install of ``pysui``
 
 .. code-block::
@@ -44,8 +44,7 @@ Setup for cloning
     python3 -m venv env
     . env/bin/activate
     pip install -U pip
-    # 0.7.0 or greater on PyPi
-    pip install pysui
+    pip install -r requirements.txt
     # Alternately
     # clone pysui to other folder
     # in pysui run bin/package-build.sh
