@@ -11,5 +11,12 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Gadget Version."""
-__version__ = "0.0.8"
+"""pysui_gadgets: Module deserialize and analyze *.mv files."""
+
+
+def main():
+    """main Entry point."""
+
+
+if __name__ == "__main__":
+    main()

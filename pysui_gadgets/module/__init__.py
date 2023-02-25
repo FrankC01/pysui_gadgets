@@ -11,5 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Gadget Version."""
-__version__ = "0.0.8"
+"""pysui_gadgets: Module package init."""

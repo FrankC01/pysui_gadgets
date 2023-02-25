@@ -23,7 +23,7 @@ from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients import sync_client
 from pysui.sui.sui_builders.get_builders import GetCoinTypeBalance, GetCoins
 from pysui.sui.sui_builders.exec_builders import PayAllSui
-from pysui_gadgets.to_one.cmdline import build_parser
+from pysui_gadgets.utils.cmdlines import to_one_parser
 
 
 def _get_gas(client: sync_client.SuiClient, address: SuiAddress) -> SuiRpcResult:
@@ -84,7 +84,7 @@ def main():
     if arg_line and arg_line[0] == "--local":
         cfg_file = arg_line[1:2]
         arg_line = arg_line[2:]
-    parsed = build_parser(arg_line)
+    parsed = to_one_parser(arg_line)
     if cfg_file:
         cfg = SuiConfig.from_config_file(cfg_file[0])
     else:

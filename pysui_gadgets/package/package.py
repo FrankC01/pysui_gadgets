@@ -33,7 +33,7 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults import SuiMovePackage
 
-from pysui_gadgets.package.cmdline import build_parser
+from pysui_gadgets.utils.cmdlines import package_parser
 from pysui_gadgets.package.cmds import lists, structs, funcs
 
 
@@ -62,7 +62,7 @@ def main() -> None:
     if arg_line and arg_line[0] == "--local":
         cfg_file = arg_line[1:2]
         arg_line = arg_line[2:]
-    parsed = build_parser(arg_line)
+    parsed = package_parser(arg_line)
     if cfg_file:
         cfg = SuiConfig.from_config_file(cfg_file[0])
     else:

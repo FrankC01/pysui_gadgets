@@ -1,4 +1,4 @@
-#    Copyright 2022 Frank V. Castellucci
+#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import os
 import sys
 from pathlib import Path
 from pysui.sui.sui_config import SuiConfig
-from pysui_gadgets.dsl.cmdline import build_parser
+from pysui_gadgets.utils.cmdlines import dsl_parser
 from pysui_gadgets.dsl.ir.modir import IRBuilder
 from pysui_gadgets.dsl.generators.package_gen import PackageGen
 
@@ -35,7 +35,7 @@ def main():
     if arg_line and arg_line[0] == "--local":
         cfg_file = arg_line[1:2]
         arg_line = arg_line[2:]
-    parsed = build_parser(arg_line)
+    parsed = dsl_parser(arg_line)
     if cfg_file:
         cfg = SuiConfig.from_config_file(cfg_file[0])
     else:
