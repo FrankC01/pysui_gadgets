@@ -102,7 +102,8 @@ class IRBuilder:
         if getp_result.is_ok():
             self.package_ir = Package(package, getp_result.result_data)
         else:
-            raise ValueError(f"Getting package {package.value} error {getp_result.result_string}")
+            raise ValueError(
+                f"Getting package {package.value} error {getp_result.result_string}")
 
     def _struct_field_type(self, field_ref: SuiMoveField) -> FieldIR:
         """."""
@@ -159,17 +160,20 @@ class IRBuilder:
                     field_ir.as_arg_converter = f"converter.to_sui_string(self.{field_ir.name})"
                     field_ir.as_type_converter = f"converter.to_object_id(self.{field_ir.name})"
                 case _:
-                    raise AttributeError(f" Can't figure  it out {type(ftype)}")
+                    raise AttributeError(
+                        f" Can't figure  it out {type(ftype)}")
             return field_ir
 
         field_ir = FieldIR(name=field_ref.name)
-        return _field_type(field_ref.type_, field_ir=field_ir)
+        return _field_type(field_ref.field_type, field_ir=field_ir)
 
     def _struct_ir(self, module_name: str, key_structs: Iterator):
         """."""
         for struct_name, struct_def in key_structs:
-            fields = [self._struct_field_type(field) for field in struct_def.fields]
-            self.package_ir.add_struct(module_name, StructIR(struct_name, fields))
+            fields = [self._struct_field_type(field)
+                      for field in struct_def.fields]
+            self.package_ir.add_struct(
+                module_name, StructIR(struct_name, fields))
 
     def _func_sig(self, mod_ir: ModuleIR, field_type: Any) -> str:
         """."""
@@ -210,7 +214,8 @@ class IRBuilder:
                 if asig:
                     field_list.append(FieldIR(f"arg_{field_index}", asig))
                     field_index += 1
-            self.package_ir.add_function(module_name, FunctionIR(func_name, field_list))
+            self.package_ir.add_function(
+                module_name, FunctionIR(func_name, field_list))
 
     def generate_ir(self) -> PackageIR:
         """generate_ir Generates modules structs and classes.
@@ -220,16 +225,19 @@ class IRBuilder:
         """
         modules = self.package_ir.package.modules
         if self.includes:
-            modules = filters.filter_include_modules(mods=modules, includes=self.includes)
+            modules = filters.filter_include_modules(
+                mods=modules, includes=self.includes)
         elif self.excludes:
-            modules = filters.filter_modules_excluding(mods=modules, excludes=self.excludes)
+            modules = filters.filter_modules_excluding(
+                mods=modules, excludes=self.excludes)
 
         # Only get modules whose functions contain at least 1 entry point function
         modules = list(filter(filters.mod_with_entry_points, modules.items()))
         # We want all Key StructIR with FieldIRs
         # Getting those first so that function args may reference by ir struct class
         for mod_name, mod_def in modules:
-            self._struct_ir(mod_name, filters.filter_key_structs(mod_def.structs))
+            self._struct_ir(
+                mod_name, filters.filter_key_structs(mod_def.structs))
         # We want all entry point only FunctionIR with FieldIRs
         for mod_name, mod_def in modules:
             self._func_ir(mod_name, filters.filter_entry_points(mod_def))

@@ -42,7 +42,8 @@ def _struct_parm_abilities(holder: list[SuiMoveStructTypeParameter], sig: str) -
     for struct_parm in holder:
         if struct_parm.constraints.abilities:
             found = True
-            accum.append(f"T{tindex}: {' + '.join(struct_parm.constraints.abilities)}")
+            accum.append(
+                f"T{tindex}: {' + '.join(struct_parm.constraints.abilities)}")
             tindex += 1
         else:
             accum.append(f"T{tindex}")
@@ -70,16 +71,18 @@ def _field_signature(field: SuiMoveField, field_str: str) -> str:
             in_str += f" figuring it out {type(ftype)}"
         return in_str
 
-    field_str += _field_type(field.type_, "")
+    field_str += _field_type(field.field_type, "")
     return field_str
 
 
 def print_module_structs(modules: dict[str, SuiMoveModule], args: Namespace) -> None:
     """."""
     if args.includes:
-        modules = filters.filter_include_modules(mods=modules, includes=args.includes)
+        modules = filters.filter_include_modules(
+            mods=modules, includes=args.includes)
     elif args.excludes:
-        modules = filters.filter_modules_excluding(mods=modules, excludes=args.excludes)
+        modules = filters.filter_modules_excluding(
+            mods=modules, excludes=args.excludes)
 
     for mod_name, mod_def in modules.items():
         print(f"\nModule {mod_name}")
@@ -93,5 +96,6 @@ def print_module_structs(modules: dict[str, SuiMoveModule], args: Namespace) -> 
                     print(field.to_json(indent=2))
             else:
                 for field in struct_def.fields:
-                    print(f"    {field.name:{max_field_name}s}: {_field_signature(field,'')}")
+                    print(
+                        f"    {field.name:{max_field_name}s}: {_field_signature(field,'')}")
             print("}")
