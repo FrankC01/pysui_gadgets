@@ -35,7 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated for `pysui` 0.15.0
+<<<<<<< HEAD
+
+- # Updated for `pysui` 0.15.0
+- Bumped dependencies for pysui from 0.13.0 to 0.15.x
+  > > > > > > > 4c26f9dc3bc146f1bf96b64cb50c80b859eea40a
 
 ### Removed
 
