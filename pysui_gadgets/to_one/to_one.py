@@ -60,7 +60,9 @@ def _join_coins(client: sync_client.SuiClient, args: argparse.Namespace):
             print(coid)
         # Merge 'em all
         pay_res = client.execute(
-            PayAllSui(signer=args.address, input_coins=just_oids, recipient=args.address, gas_budget=SuiInteger(1000))
+            PayAllSui(
+                signer=args.address, input_coins=just_oids, recipient=args.address, gas_budget=SuiString("1000000000")
+            )
         )
         if pay_res.is_ok():
             # Validate 1 coin left and show it's attributes

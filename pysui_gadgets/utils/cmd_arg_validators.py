@@ -84,6 +84,6 @@ class ValidatePackageDir(argparse.Action):
     ) -> None:
         """Validate."""
         ppath = Path(values)
-        if not ppath.exists:
+        if not ppath.exists():
             parser.error(f"{str(ppath)} does not exist.")
         setattr(namespace, self.dest, ppath)

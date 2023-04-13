@@ -14,7 +14,7 @@
 """pysui-gadget: DSL package command line parser."""
 import argparse
 
-from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID, ValidateAddress
+from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir
 
 # For dsl gadget
 def dsl_parser(in_args: list) -> argparse.Namespace:
@@ -196,5 +196,41 @@ def package_parser(in_args: list) -> argparse.Namespace:
         help="Only include modules for signature generation",
     )
     subp.set_defaults(subcommand="genstructs")
+
+    return parser.parse_args(in_args if in_args else ["--help"])
+
+
+# for package gadget
+def module_parser(in_args: list) -> argparse.Namespace:
+    """module_parser Simple command line for app.
+
+    :param in_args: list of argument strings
+    :type in_args: list
+    :return: Parse results
+    :rtype: argparse.Namespace
+    """
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        usage="%(prog)s [--command_options]",
+        description="Deserialize and analyze Sui module byte-codes",
+    )
+    command_group = parser.add_mutually_exclusive_group()
+    command_group.add_argument(
+        "-p",
+        "--package-project",
+        dest="prj_folder",
+        required=False,
+        action=ValidatePackageDir,
+        # type=str,
+        help="Ingest modules from sui move project folder",
+    )
+    command_group.add_argument(
+        "-a",
+        "--package-address",
+        dest="chn_package",
+        required=False,
+        action=ValidateObjectID,
+        help="Ingest modules from chain package address",
+    )
 
     return parser.parse_args(in_args if in_args else ["--help"])

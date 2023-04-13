@@ -163,7 +163,7 @@ class IRBuilder:
             return field_ir
 
         field_ir = FieldIR(name=field_ref.name)
-        return _field_type(field_ref.type_, field_ir=field_ir)
+        return _field_type(field_ref.field_type, field_ir=field_ir)
 
     def _struct_ir(self, module_name: str, key_structs: Iterator):
         """."""
