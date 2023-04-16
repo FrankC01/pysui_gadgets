@@ -104,11 +104,11 @@ def _deserialize(modules_b64: list[str]) -> list[RawModuleContent]:
 def main():
     """main Entry point."""
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
+    cfg_file = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
+        cfg_file = True
+        arg_line = arg_line[1:]
 
     parsed = module_parser(arg_line)
     print(parsed)
@@ -117,9 +117,9 @@ def main():
         b64_str = _project_to_base64(parsed.prj_folder)
     elif parsed.chn_package:
         if cfg_file:
-            cfg = SuiConfig.from_config_file(cfg_file[0])
+            cfg = SuiConfig.sui_base_config()
         else:
-            cfg = SuiConfig.default()
+            cfg = SuiConfig.default_config()
         print(f"Fetching from {parsed.chn_package.value}")
         b64_str = _address_to_base64(parsed.chn_package, cfg)
     _deserialize(b64_str)

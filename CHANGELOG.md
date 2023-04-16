@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.0.10] - 2023-04-16
+
+### Added
+
+### Fixed
+
+### Changed
+
+- Updated for `pysui` 0.16.1
+
+### Removed
+
 ## [0.0.9] - 2023-04-13
 
 ### Added

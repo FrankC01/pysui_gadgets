@@ -57,16 +57,16 @@ def package(client: SuiClient, args: argparse.Namespace) -> Union[ValueError, Su
 def main() -> None:
     """Main entry point."""
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
+    cfg_local = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
+        arg_line = arg_line[1:]
+        cfg_local = True
     parsed = package_parser(arg_line)
-    if cfg_file:
-        cfg = SuiConfig.from_config_file(cfg_file[0])
+    if cfg_local:
+        cfg = SuiConfig.sui_base_config()
     else:
-        cfg = SuiConfig.default()
+        cfg = SuiConfig.default_config()
 
     sui_package = package(SuiClient(cfg), parsed)
     cmd = parsed.subcommand

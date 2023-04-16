@@ -29,10 +29,11 @@ from pysui_gadgets.utils.cmdlines import to_one_parser
 def _get_gas(client: sync_client.SuiClient, address: SuiAddress) -> SuiRpcResult:
     """Efficient enumeration of SUI coins."""
     coin_type = SuiString("0x2::sui::SUI")
-    result = client.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
-    if result.is_ok():
-        limit = SuiInteger(result.result_data.coin_object_count)
-        result = client.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
+    # result = client.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
+    result = client.execute(GetCoins(owner=address, coin_type=coin_type))
+    # if result.is_ok():
+    #     limit = SuiInteger(result.result_data.coin_object_count)
+    #     result = client.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
     return result
 
 
@@ -81,16 +82,16 @@ def main():
     # Parse module meta data pulling out relevant content
     # to generate struct->class and functions->class
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
+    cfg_file = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
+        cfg_file = True
+        arg_line = arg_line[1:]
     parsed = to_one_parser(arg_line)
     if cfg_file:
-        cfg = SuiConfig.from_config_file(cfg_file[0])
+        cfg = SuiConfig.sui_base_config()
     else:
-        cfg = SuiConfig.default()
+        cfg = SuiConfig.default_config()
 
     # Run the job
     _join_coins(sync_client.SuiClient(cfg), parsed)

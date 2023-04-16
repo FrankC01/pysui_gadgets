@@ -30,16 +30,17 @@ def main():
     # Parse module meta data pulling out relevant content
     # to generate struct->class and functions->class
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
+    cfg_local = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
+        arg_line = arg_line[1:]
+        cfg_local = True
     parsed = dsl_parser(arg_line)
-    if cfg_file:
-        cfg = SuiConfig.from_config_file(cfg_file[0])
+    if cfg_local:
+        cfg = SuiConfig.sui_base_config()
     else:
-        cfg = SuiConfig.default()
+        cfg = SuiConfig.default_config()
+
     # print(parsed)
     try:
         parsed.excludes = set(parsed.excludes) if parsed.excludes else set()
