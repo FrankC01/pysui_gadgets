@@ -24,7 +24,7 @@ Setup for use
     python3 -m venv env
     . env/bin/activate
     pip install -U pip
-    pip install pysui_gadgets
+    pip install --use-pep517 pysui_gadgets
 
 Setup for cloning
 *****************
