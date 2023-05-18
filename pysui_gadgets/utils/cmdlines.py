@@ -200,9 +200,9 @@ def package_parser(in_args: list) -> argparse.Namespace:
     return parser.parse_args(in_args if in_args else ["--help"])
 
 
-# for package gadget
+# for module gadget
 def module_parser(in_args: list) -> argparse.Namespace:
-    """module_parser Simple command line for app.
+    """module_parser Simple command line for module execution.
 
     :param in_args: list of argument strings
     :type in_args: list
@@ -233,4 +233,46 @@ def module_parser(in_args: list) -> argparse.Namespace:
         help="Ingest modules from chain package address",
     )
 
+    return parser.parse_args(in_args if in_args else ["--help"])
+
+
+# for splay gadget
+def splay_parser(in_args: list) -> argparse.Namespace:
+    """splay_parser Simple command args for splay execution."""
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        usage="%(prog)s [--command_options]",
+        description="Evenly distribute gas objects across zero (self) or more addresses",
+    )
+    parser.add_argument(
+        "-o",
+        "--owner",
+        dest="owner",
+        required=True,
+        action=ValidateAddress,
+        help="The owner of coins to splay. Defaults to active-address.",
+    )
+    parser.add_argument(
+        "-c",
+        "--coins",
+        dest="coins",
+        required=False,
+        nargs="+",
+        help="The coin(s) to splay out to addresses. Defaults to all coins of owner.",
+        action=ValidateObjectID,
+    )
+    me_parser = parser.add_mutually_exclusive_group(required=False)
+    me_parser.add_argument("-address-owner", help="splays coins to --owner only for count", type=int, dest="self_count")
+    me_parser.add_argument(
+        "-t",
+        "--to-address",
+        dest="addresses",
+        required=False,
+        nargs="+",
+        help="splay coins to addresses.",
+        action=ValidateAddress,
+    )
+    parser.add_argument(
+        "-i", "--inspect", help="inspect and do not execute", required=False, action="store_true", dest="inspect"
+    )
     return parser.parse_args(in_args if in_args else ["--help"])

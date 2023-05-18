@@ -4,8 +4,51 @@ testpaths = [
     "tests/unit",
     "tests/integration",
 ]
-pythonpath = ["pysui_gadgets", "package", "dsl","utils"]
+pythonpath = ["pysui_gadgets", "package", "dsl","utils","to_one"]
 
 [build-system]
 requires = ["setuptools>=61.0","wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysui-gadgets"
+
+description = "pysui (Python Sui Client SDK) additional tools"
+requires-python = ">=3.10"
+keywords = ["software development kit", "sui", "blockchain","utilities"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only"
+]
+dependencies = [
+    "pysui>=0.21.2"
+]
+dynamic = ["version","readme"]
+
+
+[project.scripts]
+package = "pysui_gadgets.package.package:main"
+module = "pysui_gadgets.module.module:main"
+dslgen = "pysui_gadgets.dsl.dslgen:main"
+to-one = "pysui_gadgets.to_one.to_one:main"
+splay = "pysui_gadgets.splay.splay:main"
+
+[tool.setuptools.packages.find]
+exclude = ["out*","temp*","test*","tools*","build*","doc*","env*","images*"]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "pysui_gadgets.version.__version__"}
+readme = {file = ["README.md"],content-type = "text/markdown"}
+
+[project.urls]
+"Bug Reports" = "https://github.com/FrankC01/pysui_gadgets/issues"
+repository = "https://github.com/FrankC01/pysui_gadgets"

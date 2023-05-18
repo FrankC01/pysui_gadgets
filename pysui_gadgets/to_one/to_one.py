@@ -16,12 +16,12 @@
 
 import sys
 import argparse
-from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID
+from pysui.sui.sui_types.scalars import SuiString, ObjectID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients import sync_client
-from pysui.sui.sui_builders.get_builders import GetCoinTypeBalance, GetCoins
+from pysui.sui.sui_builders.get_builders import GetCoins
 from pysui.sui.sui_builders.exec_builders import PayAllSui
 from pysui_gadgets.utils.cmdlines import to_one_parser
 

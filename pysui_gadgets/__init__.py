@@ -23,5 +23,5 @@ pysui_gadget_ver = [int(x) for x in gadget_ver.split(".")]
 if sys.version_info < (3, 10):
     raise EnvironmentError("Python 3.10 or above is required")
 
-if pysui_ver[1] < 4:
-    raise EnvironmentError(f"pysui 0.4.0 or above is required, found {pysui.version.__version__}")
+if pysui_ver[1] < 21:
+    raise EnvironmentError(f"pysui 0.21.0 or above is required, found {pysui.version.__version__}")

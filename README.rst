@@ -57,6 +57,8 @@ Running gadgets
 
 .. code-block::
 
+    module -h
     package -h
-    dsl-gen -h
+    dslgen -h
     to-one -h
+    splay -h

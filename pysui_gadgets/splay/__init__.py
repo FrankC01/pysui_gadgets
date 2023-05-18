@@ -11,5 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Gadget Version."""
-__version__ = "0.0.12"
+"""Splay - Splits coins evenly across addresses."""
