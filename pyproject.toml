@@ -47,7 +47,7 @@ exclude = ["out*","temp*","test*","tools*","build*","doc*","env*","images*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "pysui_gadgets.version.__version__"}
-readme = {file = ["README.md"],content-type = "text/markdown"}
+readme = {file = ["README.rst"],content-type = "text/x-rst"}
 
 [project.urls]
 "Bug Reports" = "https://github.com/FrankC01/pysui_gadgets/issues"

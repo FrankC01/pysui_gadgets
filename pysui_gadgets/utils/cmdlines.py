@@ -262,7 +262,9 @@ def splay_parser(in_args: list) -> argparse.Namespace:
         action=ValidateObjectID,
     )
     me_parser = parser.add_mutually_exclusive_group(required=False)
-    me_parser.add_argument("-address-owner", help="splays coins to --owner only for count", type=int, dest="self_count")
+    me_parser.add_argument(
+        "-a", "--address-owner", help="splays coins to owner only for count", type=int, dest="self_count"
+    )
     me_parser.add_argument(
         "-t",
         "--to-address",
