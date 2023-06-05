@@ -11,5 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Gadget Version."""
-__version__ = "0.1.0"
+"""VH - Fetch version history of objects."""

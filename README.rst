@@ -9,6 +9,7 @@ Gadgets included:
 * dsl-gen - Creates python representation of move package key structs and entry point functions
 * to-one - Merges all SUI Gas mists 'to one' SUI Gas object for an address
 * splay - Evenly distribute coins from one address to many
+* vh - History of object versions
 
 Setup for use
 *************
@@ -25,7 +26,18 @@ Setup for use
     python3 -m venv env
     . env/bin/activate
     pip install -U pip
-    pip install --use-pep517 pysui_gadgets
+    pip install pysui_gadgets
+
+Upgrade
+*******
+
+#. Activate virtual environment
+#. Update ``pysui_gadgets``
+
+.. code-block::
+
+    . env/bin/activate
+    pip install -U pysui_gadgets
 
 Setup for cloning
 *****************
@@ -63,3 +75,4 @@ Running gadgets
     dslgen -h
     to-one -h
     splay -h
+    vh -h

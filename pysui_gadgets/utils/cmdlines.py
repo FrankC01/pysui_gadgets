@@ -250,7 +250,7 @@ def splay_parser(in_args: list) -> argparse.Namespace:
         dest="owner",
         required=True,
         action=ValidateAddress,
-        help="The owner of coins to splay. Defaults to active-address.",
+        help="The owner of coins to splay",
     )
     parser.add_argument(
         "-c",
@@ -277,4 +277,35 @@ def splay_parser(in_args: list) -> argparse.Namespace:
     parser.add_argument(
         "-i", "--inspect", help="inspect and do not execute", required=False, action="store_true", dest="inspect"
     )
+    return parser.parse_args(in_args if in_args else ["--help"])
+
+
+# for version history gadget
+def vh_parser(in_args: list) -> argparse.Namespace:
+    """vh Simple command args for history scanning."""
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        usage="%(prog)s [--command_options]",
+        description="Discover history of object versions",
+    )
+    parser.add_argument(
+        "-o",
+        "--object",
+        dest="target_object",
+        required=True,
+        action=ValidateObjectID,
+        help="object identifier.",
+    )
+    parser.add_argument(
+        "-j",
+        "--json",
+        dest="output",
+        choices=["all", "objects", "txns", "summary"],
+        default="summary",
+        help="output choices.",
+    )
+    parser.add_argument(
+        "-a", "--ascending", help="ascending order of output", required=False, action="store_true", dest="ascending"
+    )
+
     return parser.parse_args(in_args if in_args else ["--help"])

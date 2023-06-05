@@ -15,7 +15,7 @@ name = "pysui-gadgets"
 
 description = "pysui (Python Sui Client SDK) additional tools"
 requires-python = ">=3.10"
-keywords = ["software development kit", "sui", "blockchain","utilities"]
+keywords = ["software development kit", "sui", "blockchain","utilities","pysui"]
 license = {text = "Apache-2.0"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -29,7 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only"
 ]
 dependencies = [
-    "pysui>=0.21.2"
+    "pysui>=0.23.0"
 ]
 dynamic = ["version","readme"]
 
@@ -40,6 +40,7 @@ module = "pysui_gadgets.module.module:main"
 dslgen = "pysui_gadgets.dsl.dslgen:main"
 to-one = "pysui_gadgets.to_one.to_one:main"
 splay = "pysui_gadgets.splay.splay:main"
+vh = "pysui_gadgets.vh.vh:main"
 
 [tool.setuptools.packages.find]
 exclude = ["out*","temp*","test*","tools*","build*","doc*","env*","images*"]
@@ -50,5 +51,6 @@ version = {attr = "pysui_gadgets.version.__version__"}
 readme = {file = ["README.rst"],content-type = "text/x-rst"}
 
 [project.urls]
-"Bug Reports" = "https://github.com/FrankC01/pysui_gadgets/issues"
+changelog = "https://github.com/FrankC01/pysui_gadgets/issues"
 repository = "https://github.com/FrankC01/pysui_gadgets"
+issues = "https://github.com/FrankC01/pysui_gadgets/issues"
