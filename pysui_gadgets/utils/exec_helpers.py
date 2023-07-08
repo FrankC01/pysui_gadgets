@@ -1,4 +1,4 @@
-#    Copyright Frank V. Castellucci
+#    Copyright  Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -11,5 +11,19 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Gadget Version."""
-__version__ = "0.2.0"
+"""pysui-gadget: transaction execution helpers.
+
+Provides low level transaction execution prep or submit options.
+"""
+
+from pysui.sui.sui_txresults.single_tx import AddressOwner, SuiCoinObject
+
+
+def add_owner_to_gas_object(owner: str, gas_coin: SuiCoinObject) -> SuiCoinObject:
+    """Imbue coin to optimize argument resolution."""
+    setattr(
+        gas_coin,
+        "owner",
+        AddressOwner(owner_type="AddressOwner", address_owner=owner),
+    )
+    return gas_coin

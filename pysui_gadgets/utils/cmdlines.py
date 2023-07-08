@@ -14,7 +14,7 @@
 """pysui-gadget: DSL package command line parser."""
 import argparse
 
-from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir
+from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
 
 # For dsl gadget
 def dsl_parser(in_args: list) -> argparse.Namespace:
@@ -105,6 +105,14 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
         required=False,
         help="The primary coin to merge to. Defaults to first one found",
         action=ValidateObjectID,
+    )
+    parser.add_argument(
+        "-m",
+        "--merge-threshold",
+        required=False,
+        default=10,
+        help="Sets the number of coins to merge at a time. Defaults to 10.",
+        type=check_positive,
     )
     return parser.parse_args(in_args if in_args else ["--help"])
 
@@ -273,6 +281,15 @@ def splay_parser(in_args: list) -> argparse.Namespace:
         nargs="+",
         help="splay coins to addresses.",
         action=ValidateAddress,
+    )
+    parser.add_argument(
+        "-m",
+        "--merge-threshold",
+        dest="threshold",
+        required=False,
+        default=10,
+        help="Sets the number of coins to merge at a time. Defaults to 10.",
+        type=check_positive,
     )
     parser.add_argument(
         "-i", "--inspect", help="inspect and do not execute", required=False, action="store_true", dest="inspect"

@@ -16,65 +16,52 @@
 
 import sys
 import argparse
-from pysui.sui.sui_types.scalars import SuiString, ObjectID
-from pysui.sui.sui_types.address import SuiAddress
+
+
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui.sui.sui_clients.common import handle_result
 from pysui.sui.sui_clients import sync_client
-from pysui.sui.sui_builders.get_builders import GetCoins
-from pysui.sui.sui_builders.exec_builders import PayAllSui
+from pysui.sui.sui_clients.transaction import SuiTransaction
+from pysui.sui.sui_utils import partition
 from pysui_gadgets.utils.cmdlines import to_one_parser
-
-
-def _get_gas(client: sync_client.SuiClient, address: SuiAddress) -> SuiRpcResult:
-    """Efficient enumeration of SUI coins."""
-    coin_type = SuiString("0x2::sui::SUI")
-    # result = client.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
-    result = client.execute(GetCoins(owner=address, coin_type=coin_type))
-    # if result.is_ok():
-    #     limit = SuiInteger(result.result_data.coin_object_count)
-    #     result = client.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
-    return result
+from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
 
 
 def _join_coins(client: sync_client.SuiClient, args: argparse.Namespace):
     """Using PayAllSui builder, join all mists from all gas object to one for an address."""
-    gas_res = _get_gas(client, args.address)
-    if gas_res.is_ok():
-        # Collect the OIDs of the coins, validate more than 2
-        just_oids = [ObjectID(x.coin_object_id) for x in gas_res.result_data.data]
-        if len(just_oids) < 2:
-            print("Can't join with less than 2 coins")
-            return
-        # Primary coin 0 is the coin all merge to
-        primary = args.primary if args.primary else just_oids[0]
-        # Ensure that the primary is the first in the list of objects
-        primary_index = just_oids.index(primary)
-        if primary_index != 0:
-            just_oids.insert(0, just_oids.pop(primary_index))
-        # Show the user whats going on
-        print("\nConsolidating all coins for address to Primary")
-        for coid in just_oids:
-            if primary == coid:
-                print(f"{coid} <- Primary")
-                continue
-            print(coid)
-        # Merge 'em all
-        pay_res = client.execute(
-            PayAllSui(
-                signer=args.address, input_coins=just_oids, recipient=args.address, gas_budget=SuiString("1000000000")
-            )
-        )
-        if pay_res.is_ok():
-            # Validate 1 coin left and show it's attributes
-            post_gas_res = _get_gas(client, args.address)
-            if post_gas_res.is_ok() and len(post_gas_res.result_data.data) == 1:
-                print("Coin merge success. Result:")
-                print(post_gas_res.result_data.data[0].to_json(indent=2))
+    gas_res: list = handle_result(client.get_gas(args.address, True)).data
+    if len(gas_res) < 2:
+        print("Can't join with less than 2 coins")
+        return
+    # Resolve primary by argument or selection
+    if args.primary:
+        index = [x.object_id for x in gas_res].index(args.primary.value)
+        primary = gas_res.pop(index)
+    else:
+        primary = gas_res[0]
+        gas_res = gas_res[1:]
+    owner = args.address.address
+    gas_res = [add_owner_to_gas_object(owner, x) for x in gas_res]
+    converted = 0
+
+    if len(gas_res) <= args.merge_threshold:
+        txn = SuiTransaction(client, initial_sender=args.address)
+        _ = txn.merge_coins(merge_to=txn.gas, merge_from=gas_res)
+        result = txn.execute(use_gas_object=primary.object_id)
+    else:
+        # Partition the gas_res into _MAX_INPUTS chunks
+        for chunk in list(partition(gas_res, args.merge_threshold)):
+            chunk_count = len(chunk)
+            txn = SuiTransaction(client, initial_sender=args.address)
+            _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
+            result = txn.execute(use_gas_object=primary.object_id)
+            if result.is_ok():
+                converted += chunk_count
             else:
-                print("Result error")
-        else:
-            print("Transaction failed")
+                print(f"Failure on coin in range {converted} -> {result.result_string}")
+                return
+    print(f"Succesfully merged {converted} coins to {primary.object_id}")
+    print(handle_result(client.get_object(primary.object_id)).to_json(indent=2))
 
 
 def main():

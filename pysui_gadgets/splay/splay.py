@@ -14,95 +14,141 @@
 """Splay - Splits coins evenly across addresses."""
 
 import sys
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.common import handle_result
-from pysui.sui.sui_clients.sync_client import SuiClient
-from pysui.sui.sui_clients.transaction import SuiTransaction
-from pysui.sui.sui_types.scalars import ObjectID
-from pysui.sui.sui_types.address import SuiAddress
+from typing import Callable, Optional, Union
+from pysui import SuiConfig, SyncClient, SyncTransaction, ObjectID, SuiAddress, handle_result, SuiRpcResult
 from pysui.sui.sui_types import bcs
-from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
-from pysui.sui.sui_txresults.complex_tx import TxInspectionResult, TxResponse
+from pysui.sui.sui_utils import partition
+from pysui.sui.sui_txresults.single_tx import SuiCoinObjects, SuiCoinObject
+from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
 
 from pysui_gadgets.utils.cmdlines import splay_parser
+from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
+
+# Maximum coin inputs to merge to balance cost
 
 
-def _set_sender(txn: SuiTransaction, owner: SuiAddress) -> SuiTransaction:
+def _inspect_only(txn: SyncTransaction, gas_id: Optional[str] = None):
+    """Run the inspection of the splay transaction.."""
+    print(txn.raw_kind().to_json(indent=2))
+    inspect_result = txn.inspect_all()
+    if isinstance(inspect_result, SuiRpcResult):
+        return inspect_result
+    if isinstance(inspect_result, TxInspectionResult):
+        return SuiRpcResult(True, "", inspect_result)
+
+
+def _execute(txn: SyncTransaction, gas_id: Optional[str] = None):
+    """Execute the transaction."""
+    return txn.execute(gas_budget="100000", use_gas_object=gas_id)
+
+
+def _set_sender(txn: SyncTransaction, owner: SuiAddress) -> SyncTransaction:
     """Assign the transaction owner."""
     txn.signer_block.sender = owner or txn.client.config.active_address
     return txn
 
 
-def _coin_merge(txn: SuiTransaction, coins: list[ObjectID]):
+def _validate_owned_coins(all_coins: list[SuiCoinObjects], use_coins: list[ObjectID]) -> list[SuiCoinObjects]:
+    """."""
+    a_coin_ids = [x.object_id for x in all_coins]
+    result_coins: list[SuiCoinObjects] = []
+    for coin in use_coins:
+        try:
+            idx = a_coin_ids.index(coin.value)
+            result_coins.append(all_coins[idx])
+        except ValueError as ive:
+            raise ValueError(f"Coin: {coin.value} is not one of owners gas objects") from ive
+
+    return result_coins
+
+
+def _coin_merge(
+    client: SyncClient,
+    owner: SuiAddress,
+    coins: list[ObjectID],
+    threshold: int,
+    call_fn: Callable[[SyncTransaction, Optional[str]], SuiRpcResult],
+) -> Union[SuiCoinObject, SuiRpcResult]:
     """Coin merge as defined or all for owner."""
     merge_required = True
-    a_coins: list[SuiCoinObjects] = handle_result(txn.client.get_gas(txn.signer_block.sender.address)).data
-    to_coin = txn.gas
-    from_coins = a_coins[1:]
-    a_coin_set = {x.coin_object_id for x in a_coins}
+    clean_owner = owner.address
+    a_coins: list[SuiCoinObjects] = handle_result(client.get_gas(clean_owner, True)).data
+
     # If there are explict coins, validate they are part of owners gas then setup to/from
     if coins:
-        i_coin_set = {x.value for x in coins}
-        if i_coin_set.issubset(a_coin_set):
-            a_coins = handle_result(txn.client.get_objects_for(coins))
-            to_coin = a_coins[0]
-            if len(coins) == 1:
-                merge_required = False
-            else:
-                from_coins = a_coins[1:]
+        result_coins = _validate_owned_coins(a_coins, coins)
+        if len(result_coins) == 1:
+            to_coin = add_owner_to_gas_object(clean_owner, result_coins[0])
+            merge_required = False
         else:
-            raise ValueError(f"Invalid coin ID found in set {i_coin_set}")
+            result_coins = [add_owner_to_gas_object(clean_owner, x) for x in result_coins]
+            to_coin = result_coins[0]
+            from_coins = result_coins[1:]
     else:
         if len(a_coins) == 1:
             merge_required = False
+            to_coin = add_owner_to_gas_object(clean_owner, a_coins[0])
+        else:
+            result_coins = [add_owner_to_gas_object(clean_owner, x) for x in a_coins]
+            to_coin = result_coins[0]
+            from_coins = result_coins[1:]
 
     if merge_required:
-        txn.merge_coins(merge_to=to_coin, merge_from=from_coins)
+        print(f"Merging {len(from_coins)} coins to {to_coin.object_id}")
+        if len(from_coins) <= threshold:
+
+            txn = SyncTransaction(client, initial_sender=owner)
+            _ = txn.merge_coins(merge_to=txn.gas, merge_from=from_coins)
+            res = call_fn(txn, to_coin.object_id)
+            if not res.is_ok():
+                print("Failure on coin merge")
+                return res
+        else:
+            converted = 0
+            for chunk in list(partition(from_coins, threshold)):
+                txn = SyncTransaction(client, initial_sender=owner)
+                _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
+                res = call_fn(txn, to_coin.object_id)
+                if res.is_ok():
+                    converted += len(chunk)
+                else:
+                    print(f"Failure on coin in range {converted} -> {res.result_string}")
+                    return res
+    return to_coin
 
 
-def _splay_out(txn: SuiTransaction, same_address: int, addresses: list[SuiAddress]):
-    """Perform the distribution of rolled up coins."""
+def _splay_out(
+    client: SyncClient,
+    owner: SuiAddress,
+    primary: SuiCoinObject,
+    same_address: int,
+    addresses: list[SuiAddress],
+    call_fn: Callable[[SyncTransaction, Optional[str]], SuiRpcResult],
+) -> SuiRpcResult:
+    """."""
     distribute_required = True
     bcs_res: list[bcs.Argument] = []
     # Distribute rollup to self based on same_address
+    txn = SyncTransaction(client, initial_sender=owner)
+    # If splaying to self
     if same_address:
         distribute_required = False
         txn.split_coin_equal(coin=txn.gas, split_count=same_address)
-    # Distribute rollup to addresses identified
+        result = call_fn(txn, primary.object_id)
+    # Or splaying to others
     elif addresses:
         bcs_res = txn.split_coin_and_return(coin=txn.gas, split_count=len(addresses) + 1)
-    # Distribute rollup to addresses owned by this configuration
+    # Or splaying to all addresses known to configuration
     else:
         sender_addy = txn.signer_block.sender.address
-        addresses = [SuiAddress(x) for x in txn.client.config.addresses if x != sender_addy]
+        addresses = [SuiAddress(x) for x in client.config.addresses if x != sender_addy]
         bcs_res = txn.split_coin_and_return(coin=txn.gas, split_count=len(addresses) + 1)
-
     if distribute_required and bcs_res:
         for index, res in enumerate(bcs_res):
             txn.transfer_objects(transfers=res, recipient=addresses[index])
+        result = call_fn(txn, primary.object_id)
 
-
-def _inspect_only(txn: SuiTransaction):
-    """Run the inspection of the splay transaction.."""
-    print(txn.raw_kind().to_json(indent=2))
-    inspect_result: TxInspectionResult = txn.inspect_all()
-    if inspect_result and inspect_result.effects.status.succeeded:
-        print(f"Gas total: {inspect_result.effects.gas_used.total}", end="")
-        print(f" after rebate: {inspect_result.effects.gas_used.total_after_rebate}")
-        print(inspect_result.to_json(indent=2))
-    elif not inspect_result.effects.status.succeeded:
-        print(f"Inspection execution failed: {inspect_result.effects.status.error}")
-    else:
-        print(f"Inspection failed: {inspect_result.result_string}")
-
-
-def _execute(txn: SuiTransaction):
-    """Execute the transaction."""
-    tx_result: TxResponse = handle_result(txn.execute(gas_budget="100000"))
-    if tx_result.effects.status.succeeded:
-        print(tx_result.to_json(indent=2))
-    else:
-        print(f"Inspection execution failed: {tx_result.effects.status.error}")
+    return result
 
 
 def main():
@@ -120,16 +166,29 @@ def main():
         cfg = SuiConfig.sui_base_config()
     else:
         cfg = SuiConfig.default_config()
-    # Prepare transaction and Identify the owner of coins being splayed as well as who signs
-    txn = _set_sender(SuiTransaction(SuiClient(cfg)), parsed.owner)
+    # Setyup client
+    client = SyncClient(cfg)
     # Merge any/all coins
-    _coin_merge(txn, parsed.coins)
-    # Distribute merged coins equally to any/all addresses
-    _splay_out(txn, parsed.self_count, parsed.addresses)
-    if parsed.inspect:
-        _inspect_only(txn)
+    primary = _coin_merge(
+        client, parsed.owner, parsed.coins, parsed.threshold, _inspect_only if parsed.inspect else _execute
+    )
+    if isinstance(primary, SuiRpcResult):
+        print(f"Failed {primary.result_string}")
     else:
-        _execute(txn)
+        print(f"Ready to splay {primary.object_id}")
+        res = _splay_out(
+            client,
+            parsed.owner,
+            primary,
+            parsed.self_count,
+            parsed.addresses,
+            _inspect_only if parsed.inspect else _execute,
+        )
+        if isinstance(res, SuiRpcResult):
+            if res.is_ok():
+                print(res.result_data.to_json(indent=2))
+            else:
+                print(res.result_string)
 
 
 if __name__ == "__main__":
