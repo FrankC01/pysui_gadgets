@@ -15,7 +15,8 @@
 
 import sys
 from typing import Callable, Optional, Union
-from pysui import SuiConfig, SyncClient, SyncTransaction, ObjectID, SuiAddress, handle_result, SuiRpcResult
+from pysui import SyncClient, SuiConfig, ObjectID, SuiAddress, handle_result, SuiRpcResult
+from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_utils import partition
 from pysui.sui.sui_txresults.single_tx import SuiCoinObjects, SuiCoinObject

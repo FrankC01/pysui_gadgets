@@ -16,9 +16,7 @@
 import sys
 from pathlib import Path
 from typing import get_type_hints
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients import sync_client
-from pysui.sui.sui_types.scalars import ObjectID
+from pysui import SuiConfig, SyncClient, ObjectID
 from pysui.sui.sui_utils import publish_build, CompiledPackage
 from pysui.sui.sui_builders.get_builders import GetObject
 from pysui.sui_move.module.deserialize import from_base64, RawModuleContent
@@ -49,7 +47,7 @@ def _address_to_base64(package_object: ObjectID, config: SuiConfig) -> list[str]
     :return: The base64 encoded string of the core module of project
     :rtype: str
     """
-    client = sync_client.SuiClient(config)
+    client = SyncClient(config)
     result = client.execute(GetObject(object_id=package_object, options=GetObject.package_options()))
     if result.is_ok():
         if hasattr(result.result_data.bcs, "module_map"):

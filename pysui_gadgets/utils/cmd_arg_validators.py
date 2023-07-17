@@ -17,8 +17,7 @@ import sys
 import argparse
 from pathlib import Path
 from typing import Any, Sequence
-from pysui.sui.sui_types.scalars import ObjectID
-from pysui.sui.sui_types.address import SuiAddress
+from pysui import ObjectID, SuiAddress
 
 
 def check_positive(value: str) -> int:

@@ -19,9 +19,7 @@ from dataclasses import dataclass
 from typing import Union
 import json
 from dataclasses_json import DataClassJsonMixin
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.common import handle_result
-from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui import SuiConfig, SyncClient, handle_result
 from pysui.sui.sui_builders.get_builders import GetTx
 from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectNotExist
 from pysui.sui.sui_txresults.complex_tx import TxResponse
@@ -77,7 +75,7 @@ class ObjectState:
 class ObjectHistory:
     """Collection Class."""
 
-    def __init__(self, client: SuiClient, vh_type: ObjType, versions: list[ObjectState]):
+    def __init__(self, client: SyncClient, vh_type: ObjType, versions: list[ObjectState]):
         """Instance initializer."""
         self.client = client
         self.start_index: int = 0
@@ -118,7 +116,7 @@ class ObjectHistory:
         self._walk_it(base_version.object_ref.object_id, base_version.tx_context)
 
 
-def walk_history(client: SuiClient, target_object_id: str) -> ObjectHistory:
+def walk_history(client: SyncClient, target_object_id: str) -> ObjectHistory:
     """Walk history for provided target object."""
     obj_read: ObjectRead = handle_result(client.get_object(target_object_id))
     if not isinstance(obj_read, ObjectNotExist):
@@ -187,7 +185,7 @@ def main():
     else:
         cfg = SuiConfig.default_config()
     # Version history
-    produce_output(walk_history(SuiClient(cfg), parsed.target_object), parsed.output, parsed.ascending)
+    produce_output(walk_history(SyncClient(cfg), parsed.target_object), parsed.output, parsed.ascending)
 
 
 if __name__ == "__main__":

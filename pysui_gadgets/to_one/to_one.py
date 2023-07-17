@@ -18,16 +18,14 @@ import sys
 import argparse
 
 
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.common import handle_result
-from pysui.sui.sui_clients import sync_client
-from pysui.sui.sui_clients.transaction import SuiTransaction
+from pysui import SyncClient, SuiConfig, handle_result
+from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_utils import partition
 from pysui_gadgets.utils.cmdlines import to_one_parser
 from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
 
 
-def _join_coins(client: sync_client.SuiClient, args: argparse.Namespace):
+def _join_coins(client: SyncClient, args: argparse.Namespace):
     """Using PayAllSui builder, join all mists from all gas object to one for an address."""
     gas_res: list = handle_result(client.get_gas(args.address, True)).data
     if len(gas_res) < 2:
@@ -45,14 +43,14 @@ def _join_coins(client: sync_client.SuiClient, args: argparse.Namespace):
     converted = 0
 
     if len(gas_res) <= args.merge_threshold:
-        txn = SuiTransaction(client, initial_sender=args.address)
+        txn = SyncTransaction(client, initial_sender=args.address)
         _ = txn.merge_coins(merge_to=txn.gas, merge_from=gas_res)
         result = txn.execute(use_gas_object=primary.object_id)
     else:
         # Partition the gas_res into _MAX_INPUTS chunks
         for chunk in list(partition(gas_res, args.merge_threshold)):
             chunk_count = len(chunk)
-            txn = SuiTransaction(client, initial_sender=args.address)
+            txn = SyncTransaction(client, initial_sender=args.address)
             _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
             result = txn.execute(use_gas_object=primary.object_id)
             if result.is_ok():
@@ -81,7 +79,7 @@ def main():
         cfg = SuiConfig.default_config()
 
     # Run the job
-    _join_coins(sync_client.SuiClient(cfg), parsed)
+    _join_coins(SyncClient(cfg), parsed)
 
 
 if __name__ == "__main__":

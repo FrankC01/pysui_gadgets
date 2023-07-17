@@ -29,15 +29,14 @@ import sys
 
 from typing import Union
 
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui import SuiConfig, SyncClient
 from pysui.sui.sui_txresults import SuiMovePackage
 
 from pysui_gadgets.utils.cmdlines import package_parser
 from pysui_gadgets.package.cmds import lists, structs, funcs
 
 
-def package(client: SuiClient, args: argparse.Namespace) -> Union[ValueError, SuiMovePackage]:
+def package(client: SyncClient, args: argparse.Namespace) -> Union[ValueError, SuiMovePackage]:
     """package Retrieve SUI move package from chain.
 
     :param client: Synchronous Client
@@ -68,7 +67,7 @@ def main() -> None:
     else:
         cfg = SuiConfig.default_config()
 
-    sui_package = package(SuiClient(cfg), parsed)
+    sui_package = package(SyncClient(cfg), parsed)
     cmd = parsed.subcommand
     vars(parsed).pop("subcommand")
 
