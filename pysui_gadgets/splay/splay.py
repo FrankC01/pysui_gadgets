@@ -40,7 +40,7 @@ def _inspect_only(txn: SyncTransaction, gas_id: Optional[str] = None):
 
 def _execute(txn: SyncTransaction, gas_id: Optional[str] = None):
     """Execute the transaction."""
-    return txn.execute(gas_budget="100000", use_gas_object=gas_id)
+    return txn.execute(use_gas_object=gas_id)
 
 
 def _set_sender(txn: SyncTransaction, owner: SuiAddress) -> SyncTransaction:
