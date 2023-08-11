@@ -12,4 +12,4 @@
 # -*- coding: utf-8 -*-
 
 """Pysui Gadget Version."""
-__version__ = "0.3.2"
+__version__ = "0.3.3"

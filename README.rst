@@ -14,7 +14,7 @@ Gadgets included:
 Setup for use
 *************
 
-#. Install SUI binaries (devnet is currently supported)
+#. Install SUI binaries
 #. Setup python virtual environment
 #. Activate virtual environment
 #. Update ``pip``
@@ -42,7 +42,7 @@ Upgrade
 Setup for cloning
 *****************
 
-#. Install SUI binaries (devnet is currently supported)
+#. Install SUI binaries
 #. Clone ``pysui_gadgets`` repository
 #. Setup python virtual environment
 #. Activate virtual environment

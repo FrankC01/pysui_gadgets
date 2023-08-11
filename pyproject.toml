@@ -26,10 +26,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only"
 ]
 dependencies = [
-    "pysui>=0.32.0"
+    "pysui>=0.33.0"
 ]
 dynamic = ["version","readme"]
 
