@@ -1,13 +1,10 @@
 # pyproject.toml
 [tool.pytest.ini_options]
-testpaths = [
-    "tests/unit",
-    "tests/integration",
-]
-pythonpath = ["pysui_gadgets", "package", "dsl","utils","to_one"]
+testpaths = ["tests/unit", "tests/integration"]
+pythonpath = ["pysui_gadgets", "package", "dsl", "utils", "to_one"]
 
 [build-system]
-requires = ["setuptools>=61.0","wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,8 +12,14 @@ name = "pysui-gadgets"
 
 description = "pysui (Python Sui Client SDK) additional tools"
 requires-python = ">=3.10"
-keywords = ["software development kit", "sui", "blockchain","utilities","pysui"]
-license = {text = "Apache-2.0"}
+keywords = [
+    "software development kit",
+    "sui",
+    "blockchain",
+    "utilities",
+    "pysui",
+]
+license = { text = "Apache-2.0" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -27,12 +30,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3 :: Only"
+    "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = [
-    "pysui>=0.33.0"
-]
-dynamic = ["version","readme"]
+dependencies = ["pysui>=0.37.1"]
+dynamic = ["version", "readme"]
 
 
 [project.scripts]
@@ -44,12 +45,21 @@ splay = "pysui_gadgets.splay.splay:main"
 vh = "pysui_gadgets.vh.vh:main"
 
 [tool.setuptools.packages.find]
-exclude = ["out*","temp*","test*","tools*","build*","doc*","env*","images*"]
+exclude = [
+    "out*",
+    "temp*",
+    "test*",
+    "tools*",
+    "build*",
+    "doc*",
+    "env*",
+    "images*",
+]
 
 
 [tool.setuptools.dynamic]
-version = {attr = "pysui_gadgets.version.__version__"}
-readme = {file = ["README.rst"],content-type = "text/x-rst"}
+version = { attr = "pysui_gadgets.version.__version__" }
+readme = { file = ["README.rst"], content-type = "text/x-rst" }
 
 [project.urls]
 changelog = "https://github.com/FrankC01/pysui_gadgets/issues"
