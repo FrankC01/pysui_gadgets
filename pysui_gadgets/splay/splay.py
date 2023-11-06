@@ -121,7 +121,7 @@ def _coin_merge(
         else:
             converted = 0
             for chunk in list(partition(from_coins, threshold)):
-                txn = SyncTransaction(client, initial_sender=owner)
+                txn = SyncTransaction(client=client, initial_sender=owner)
                 _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
                 res = call_fn(txn, to_coin.object_id)
                 if res.is_ok():
