@@ -15,7 +15,14 @@
 
 import sys
 from typing import Callable, Optional, Union
-from pysui import SyncClient, SuiConfig, ObjectID, SuiAddress, handle_result, SuiRpcResult
+from pysui import (
+    SyncClient,
+    SuiConfig,
+    ObjectID,
+    SuiAddress,
+    handle_result,
+    SuiRpcResult,
+)
 from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_utils import partition
@@ -49,7 +56,9 @@ def _set_sender(txn: SyncTransaction, owner: SuiAddress) -> SyncTransaction:
     return txn
 
 
-def _validate_owned_coins(all_coins: list[SuiCoinObjects], use_coins: list[ObjectID]) -> list[SuiCoinObjects]:
+def _validate_owned_coins(
+    all_coins: list[SuiCoinObjects], use_coins: list[ObjectID]
+) -> list[SuiCoinObjects]:
     """."""
     a_coin_ids = [x.object_id for x in all_coins]
     result_coins: list[SuiCoinObjects] = []
@@ -58,7 +67,9 @@ def _validate_owned_coins(all_coins: list[SuiCoinObjects], use_coins: list[Objec
             idx = a_coin_ids.index(coin.value)
             result_coins.append(all_coins[idx])
         except ValueError as ive:
-            raise ValueError(f"Coin: {coin.value} is not one of owners gas objects") from ive
+            raise ValueError(
+                f"Coin: {coin.value} is not one of owners gas objects"
+            ) from ive
 
     return result_coins
 
@@ -73,7 +84,9 @@ def _coin_merge(
     """Coin merge as defined or all for owner."""
     merge_required = True
     clean_owner = owner.address
-    a_coins: list[SuiCoinObjects] = handle_result(client.get_gas(clean_owner, True)).data
+    a_coins: list[SuiCoinObjects] = handle_result(
+        client.get_gas(clean_owner, True)
+    ).data
 
     # If there are explict coins, validate they are part of owners gas then setup to/from
     if coins:
@@ -82,7 +95,9 @@ def _coin_merge(
             to_coin = add_owner_to_gas_object(clean_owner, result_coins[0])
             merge_required = False
         else:
-            result_coins = [add_owner_to_gas_object(clean_owner, x) for x in result_coins]
+            result_coins = [
+                add_owner_to_gas_object(clean_owner, x) for x in result_coins
+            ]
             to_coin = result_coins[0]
             from_coins = result_coins[1:]
     else:
@@ -97,8 +112,7 @@ def _coin_merge(
     if merge_required:
         print(f"Merging {len(from_coins)} coins to {to_coin.object_id}")
         if len(from_coins) <= threshold:
-
-            txn = SyncTransaction(client, initial_sender=owner)
+            txn = SyncTransaction(client=client, initial_sender=owner)
             _ = txn.merge_coins(merge_to=txn.gas, merge_from=from_coins)
             res = call_fn(txn, to_coin.object_id)
             if not res.is_ok():
@@ -113,7 +127,9 @@ def _coin_merge(
                 if res.is_ok():
                     converted += len(chunk)
                 else:
-                    print(f"Failure on coin in range {converted} -> {res.result_string}")
+                    print(
+                        f"Failure on coin in range {converted} -> {res.result_string}"
+                    )
                     return res
     return to_coin
 
@@ -130,7 +146,7 @@ def _splay_out(
     distribute_required = True
     bcs_res: list[bcs.Argument] = []
     # Distribute rollup to self based on same_address
-    txn = SyncTransaction(client, initial_sender=owner)
+    txn = SyncTransaction(client=client, initial_sender=owner)
     # If splaying to self
     if same_address:
         distribute_required = False
@@ -138,12 +154,16 @@ def _splay_out(
         result = call_fn(txn, primary.object_id)
     # Or splaying to others
     elif addresses:
-        bcs_res = txn.split_coin_and_return(coin=txn.gas, split_count=len(addresses) + 1)
+        bcs_res = txn.split_coin_and_return(
+            coin=txn.gas, split_count=len(addresses) + 1
+        )
     # Or splaying to all addresses known to configuration
     else:
         sender_addy = txn.signer_block.sender.address
         addresses = [SuiAddress(x) for x in client.config.addresses if x != sender_addy]
-        bcs_res = txn.split_coin_and_return(coin=txn.gas, split_count=len(addresses) + 1)
+        bcs_res = txn.split_coin_and_return(
+            coin=txn.gas, split_count=len(addresses) + 1
+        )
     if distribute_required and bcs_res:
         for index, res in enumerate(bcs_res):
             txn.transfer_objects(transfers=res, recipient=addresses[index])
@@ -171,7 +191,11 @@ def main():
     client = SyncClient(cfg)
     # Merge any/all coins
     primary = _coin_merge(
-        client, parsed.owner, parsed.coins, parsed.threshold, _inspect_only if parsed.inspect else _execute
+        client,
+        parsed.owner,
+        parsed.coins,
+        parsed.threshold,
+        _inspect_only if parsed.inspect else _execute,
     )
     if isinstance(primary, SuiRpcResult):
         print(f"Failed {primary.result_string}")

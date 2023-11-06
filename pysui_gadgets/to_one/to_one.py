@@ -43,14 +43,14 @@ def _join_coins(client: SyncClient, args: argparse.Namespace):
     converted = 0
 
     if len(gas_res) <= args.merge_threshold:
-        txn = SyncTransaction(client, initial_sender=args.address)
+        txn = SyncTransaction(client=client, initial_sender=args.address)
         _ = txn.merge_coins(merge_to=txn.gas, merge_from=gas_res)
         result = txn.execute(use_gas_object=primary.object_id)
     else:
         # Partition the gas_res into _MAX_INPUTS chunks
         for chunk in list(partition(gas_res, args.merge_threshold)):
             chunk_count = len(chunk)
-            txn = SyncTransaction(client, initial_sender=args.address)
+            txn = SyncTransaction(client=client, initial_sender=args.address)
             _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
             result = txn.execute(use_gas_object=primary.object_id)
             if result.is_ok():
