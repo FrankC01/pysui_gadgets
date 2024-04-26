@@ -14,6 +14,7 @@
 """Splay - Splits coins evenly across addresses."""
 
 import sys
+import base64
 from typing import Callable, Optional, Union
 from pysui import (
     SyncClient,
@@ -38,6 +39,7 @@ from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
 def _inspect_only(txn: SyncTransaction, gas_id: Optional[str] = None):
     """Run the inspection of the splay transaction.."""
     print(txn.raw_kind().to_json(indent=2))
+    # print(base64.b64encode(txn.raw_kind().serialize()).decode())
     inspect_result = txn.inspect_all()
     if isinstance(inspect_result, SuiRpcResult):
         return inspect_result

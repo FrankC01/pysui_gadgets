@@ -32,7 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = ["pysui>=0.41.0"]
+dependencies = ["pysui>=0.58.0"]
 dynamic = ["version", "readme"]
 
 
