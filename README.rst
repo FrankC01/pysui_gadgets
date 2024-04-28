@@ -78,6 +78,6 @@ Running gadgets
     dslgen -h
 
 splay
------
+~~~~~
 
 Evenly distribute gas objects across one or more addresses. Can also splay to owner itself.

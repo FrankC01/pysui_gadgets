@@ -11,167 +11,141 @@
 
 # -*- coding: utf-8 -*-
 
+
 """Splay - Splits coins evenly across addresses."""
 
 import sys
-import base64
-from typing import Callable, Optional, Union
-from pysui import (
-    SyncClient,
-    SuiConfig,
-    ObjectID,
-    SuiAddress,
-    handle_result,
-    SuiRpcResult,
-)
-from pysui.sui.sui_txn import SyncTransaction
-from pysui.sui.sui_types import bcs
-from pysui.sui.sui_utils import partition
-from pysui.sui.sui_txresults.single_tx import SuiCoinObjects, SuiCoinObject
-from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
-
+from typing import Optional
+from pysui import SuiConfig, SuiAddress
 from pysui_gadgets.utils.cmdlines import splay_parser
-from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
-
-# Maximum coin inputs to merge to balance cost
-
-
-def _inspect_only(txn: SyncTransaction, gas_id: Optional[str] = None):
-    """Run the inspection of the splay transaction.."""
-    print(txn.raw_kind().to_json(indent=2))
-    # print(base64.b64encode(txn.raw_kind().serialize()).decode())
-    inspect_result = txn.inspect_all()
-    if isinstance(inspect_result, SuiRpcResult):
-        return inspect_result
-    if isinstance(inspect_result, TxInspectionResult):
-        return SuiRpcResult(True, "", inspect_result)
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_pgql.pgql_query as qn
 
 
-def _execute(txn: SyncTransaction, gas_id: Optional[str] = None):
-    """Execute the transaction."""
-    return txn.execute(use_gas_object=gas_id)
-
-
-def _set_sender(txn: SyncTransaction, owner: SuiAddress) -> SyncTransaction:
-    """Assign the transaction owner."""
-    txn.signer_block.sender = owner or txn.client.config.active_address
-    return txn
-
-
-def _validate_owned_coins(
-    all_coins: list[SuiCoinObjects], use_coins: list[ObjectID]
-) -> list[SuiCoinObjects]:
-    """."""
-    a_coin_ids = [x.object_id for x in all_coins]
-    result_coins: list[SuiCoinObjects] = []
-    for coin in use_coins:
-        try:
-            idx = a_coin_ids.index(coin.value)
-            result_coins.append(all_coins[idx])
-        except ValueError as ive:
-            raise ValueError(
-                f"Coin: {coin.value} is not one of owners gas objects"
-            ) from ive
-
-    return result_coins
-
-
-def _coin_merge(
-    client: SyncClient,
-    owner: SuiAddress,
-    coins: list[ObjectID],
-    threshold: int,
-    call_fn: Callable[[SyncTransaction, Optional[str]], SuiRpcResult],
-) -> Union[SuiCoinObject, SuiRpcResult]:
-    """Coin merge as defined or all for owner."""
-    merge_required = True
-    clean_owner = owner.address
-    a_coins: list[SuiCoinObjects] = handle_result(
-        client.get_gas(clean_owner, True)
-    ).data
-
-    # If there are explict coins, validate they are part of owners gas then setup to/from
-    if coins:
-        result_coins = _validate_owned_coins(a_coins, coins)
-        if len(result_coins) == 1:
-            to_coin = add_owner_to_gas_object(clean_owner, result_coins[0])
-            merge_required = False
-        else:
-            result_coins = [
-                add_owner_to_gas_object(clean_owner, x) for x in result_coins
-            ]
-            to_coin = result_coins[0]
-            from_coins = result_coins[1:]
+def _resolve_owner(config: SuiConfig, owner, alias):
+    """Resolve the parsers directive of coin ownership."""
+    owner_designate: SuiAddress = None
+    if owner:
+        owner_designate: SuiAddress = owner
+    elif alias:
+        owner_designate: SuiAddress = config.addr4al(alias)
     else:
-        if len(a_coins) == 1:
-            merge_required = False
-            to_coin = add_owner_to_gas_object(clean_owner, a_coins[0])
-        else:
-            result_coins = [add_owner_to_gas_object(clean_owner, x) for x in a_coins]
-            to_coin = result_coins[0]
-            from_coins = result_coins[1:]
+        raise ValueError(f"Owner not designated.")
 
-    if merge_required:
-        print(f"Merging {len(from_coins)} coins to {to_coin.object_id}")
-        if len(from_coins) <= threshold:
-            txn = SyncTransaction(client=client, initial_sender=owner)
-            _ = txn.merge_coins(merge_to=txn.gas, merge_from=from_coins)
-            res = call_fn(txn, to_coin.object_id)
-            if not res.is_ok():
-                print("Failure on coin merge")
-                return res
-        else:
-            converted = 0
-            for chunk in list(partition(from_coins, threshold)):
-                txn = SyncTransaction(client=client, initial_sender=owner)
-                _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
-                res = call_fn(txn, to_coin.object_id)
-                if res.is_ok():
-                    converted += len(chunk)
-                else:
-                    print(
-                        f"Failure on coin in range {converted} -> {res.result_string}"
+    if owner_designate != config.active_address:
+        if owner_designate.address not in config.addresses:
+            raise ValueError(f"Missing private key for {owner_designate.address}")
+        print(f"Setting coin owner to {owner_designate.address}")
+        config.set_active_address(owner_designate)
+
+
+def _get_all_owner_gas(client: SuiGQLClient) -> list[pgql_type.SuiCoinObjectGQL]:
+    """Retreive all owners Gas Objects."""
+    coin_list: list[pgql_type.SuiCoinObjectGQL] = []
+    owner: str = client.config.active_address.address
+    result = client.execute_query_node(with_node=qn.GetCoins(owner=owner))
+    while True:
+        if result.is_ok():
+            coin_list.extend(result.result_data.data)
+            if result.result_data.next_cursor.hasNextPage:
+                result = client.execute_query_node(
+                    with_node=qn.GetCoins(
+                        owner=owner, next_page=result.result_data.next_cursor
                     )
-                    return res
-    return to_coin
+                )
+            else:
+                break
+        else:
+            raise ValueError(f"GetCoins error {result.result_string}")
+    if not coin_list:
+        raise ValueError(f"{owner} has no Sui coins to splay")
+    return coin_list
 
 
-def _splay_out(
-    client: SyncClient,
-    owner: SuiAddress,
-    primary: SuiCoinObject,
-    same_address: int,
-    addresses: list[SuiAddress],
-    call_fn: Callable[[SyncTransaction, Optional[str]], SuiRpcResult],
-) -> SuiRpcResult:
+def _consolidate_coin(
+    client: SuiGQLClient,
+    coins: list[pgql_type.SuiCoinObjectGQL],
+    coin_ids: Optional[list[str]],
+) -> tuple[pgql_type.SuiCoinObjectGQL, SuiTransaction, int]:
+    """Setup consolidation of coins in play."""
+
+    from_coins = coins
+    # If not coin_ids, all user coins are in play
+    if coin_ids:
+        if len(coin_ids) > len(coins):
+            raise ValueError(
+                f"Count of targeted coins {len(coin_ids)} exceeds available coins {len(coins)}"
+            )
+        # Get object ids only into a set
+        coin_ids_set = {x.value for x in coin_ids}
+        # Get actual coins in set
+        coin_set = {x.object_id for x in coins}
+        # Make sure they are valid
+        not_found = coin_ids_set.difference(coin_set)
+        if not_found:
+            raise ValueError(f"Targeted coins {not_found} do not exist in owners coins")
+        from_coins = [x for x in coins if x.object_id in coin_ids_set]
+
+    txn = SuiTransaction(client=client)
+    # Get total balance for distribution
+    total_balance: int = 0
+    for scoin in from_coins:
+        total_balance += int(scoin.balance)
+    # If more than 1 coin in play, merge all others to it
+    if len(from_coins) > 1:
+        txn.merge_coins(merge_to=txn.gas, merge_from=from_coins[1:])
+    # Regardless, coin 0 is the targeted gas coin for splitting
+    return from_coins[0], txn, total_balance
+
+
+def _split_and_distribute_coins(
+    txn: SuiTransaction, addresses: list, total_balance: int
+):
+    """Distribute the coins to other addresses."""
+
+    distro = [x for x in addresses if x != txn.client.config.active_address.address]
+    if distro:
+        distro = list(set(distro))
+        dlen = len(distro)
+        partial_balance = int(total_balance / (dlen if dlen > 1 else 2))
+        distro_balances = [partial_balance for x in distro]
+        # result = txn.split_coin(coin=txn.gas, amounts=distro_balances)
+        for index, target in enumerate(distro):
+            txn.transfer_sui(
+                from_coin=txn.gas, recipient=target, amount=distro_balances[index]
+            )
+            # txn.transfer_sui(recipient=target, from_coin=result[index])
+
+
+def _inspect(
+    client: SuiGQLClient, txn: SuiTransaction, target_gas=pgql_type.SuiCoinObjectGQL
+):
     """."""
-    distribute_required = True
-    bcs_res: list[bcs.Argument] = []
-    # Distribute rollup to self based on same_address
-    txn = SyncTransaction(client=client, initial_sender=owner)
-    # If splaying to self
-    if same_address:
-        distribute_required = False
-        txn.split_coin_equal(coin=txn.gas, split_count=same_address)
-        result = call_fn(txn, primary.object_id)
-    # Or splaying to others
-    elif addresses:
-        bcs_res = txn.split_coin_and_return(
-            coin=txn.gas, split_count=len(addresses) + 1
-        )
-    # Or splaying to all addresses known to configuration
+    print(txn.raw_kind().to_json(indent=2))
+    tx_bytes = txn.build(use_gas_objects=[target_gas])
+    result = client.execute_query_node(
+        with_node=qn.DryRunTransaction(tx_bytestr=tx_bytes)
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
     else:
-        sender_addy = txn.signer_block.sender.address
-        addresses = [SuiAddress(x) for x in client.config.addresses if x != sender_addy]
-        bcs_res = txn.split_coin_and_return(
-            coin=txn.gas, split_count=len(addresses) + 1
-        )
-    if distribute_required and bcs_res:
-        for index, res in enumerate(bcs_res):
-            txn.transfer_objects(transfers=res, recipient=addresses[index])
-        result = call_fn(txn, primary.object_id)
+        raise ValueError(f"Error in dry run {result.result_string}")
 
-    return result
+
+def _execute(
+    client: SuiGQLClient, txn: SuiTransaction, target_gas=pgql_type.SuiCoinObjectGQL
+):
+    """."""
+    tx_b64, sig_array = txn.build_and_sign(use_gas_objects=[target_gas])
+    result = client.execute_query_node(
+        with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+    else:
+        raise ValueError(f"Error in dry run {result.result_string}")
 
 
 def main():
@@ -185,37 +159,35 @@ def main():
         cfg_file = True
         arg_line = arg_line[1:]
     parsed = splay_parser(arg_line)
+    print(parsed)
     if cfg_file:
         cfg = SuiConfig.sui_base_config()
     else:
         cfg = SuiConfig.default_config()
-    # Setyup client
-    client = SyncClient(cfg)
-    # Merge any/all coins
-    primary = _coin_merge(
-        client,
-        parsed.owner,
-        parsed.coins,
-        parsed.threshold,
-        _inspect_only if parsed.inspect else _execute,
-    )
-    if isinstance(primary, SuiRpcResult):
-        print(f"Failed {primary.result_string}")
-    else:
-        print(f"Ready to splay {primary.object_id}")
-        res = _splay_out(
-            client,
-            parsed.owner,
-            primary,
-            parsed.self_count,
-            parsed.addresses,
-            _inspect_only if parsed.inspect else _execute,
+
+    try:
+        _resolve_owner(cfg, parsed.owner, parsed.alias)
+        sui_client = SuiGQLClient(config=cfg)
+        all_gas = _get_all_owner_gas(sui_client)
+        target_gas, transaction, total_balance = _consolidate_coin(
+            sui_client, all_gas, parsed.coins
         )
-        if isinstance(res, SuiRpcResult):
-            if res.is_ok():
-                print(res.result_data.to_json(indent=2))
-            else:
-                print(res.result_string)
+        if parsed.self_count:
+            transaction.split_coin_equal(
+                coin=transaction.gas, split_count=parsed.self_count
+            )
+        else:
+            use_addresses = cfg.addresses
+            if parsed.addresses:
+                use_addresses = [x.address for x in parsed.addresses]
+            _split_and_distribute_coins(transaction, use_addresses, total_balance)
+        if parsed.inspect:
+            _inspect(sui_client, transaction, target_gas)
+        else:
+            _execute(sui_client, transaction, target_gas)
+
+    except ValueError as ve:
+        print(ve)
 
 
 if __name__ == "__main__":

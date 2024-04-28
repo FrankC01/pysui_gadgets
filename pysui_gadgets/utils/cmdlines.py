@@ -278,7 +278,7 @@ def splay_parser(in_args: list) -> argparse.Namespace:
     """splay_parser Simple command args for splay execution."""
     parser = argparse.ArgumentParser(
         add_help=True,
-        usage="%(prog)s [--command_options]",
+        usage="%(prog)s [options]",
         description="Evenly distribute gas objects across one or more addresses. Can also splay to oneself.",
     )
     addy_arg_group = parser.add_mutually_exclusive_group(required=True)
