@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] -
+
+**BREAKING CHANGES**
+
+### Added
+
+### Fixed
+
+### Changed
+
+- BREAKING For `splay`:
+  - Added address alias `-a, --alias` support in command line arguments
+  - Added `-s, --self-recipient` support in command line arguments (used to be `-a, --address-owner`)
+  - Removed `-m, --merge-threshold` from command line arguments
+
 ## [0.4.3] - 2023-11-06
 
 ### Added

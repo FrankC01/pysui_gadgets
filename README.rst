@@ -70,9 +70,14 @@ Running gadgets
 
 .. code-block::
 
+    splay -h
+    to-one -h
+    vh -h
     module -h
     package -h
     dslgen -h
-    to-one -h
-    splay -h
-    vh -h
+
+splay
+-----
+
+Evenly distribute gas objects across one or more addresses. Can also splay to owner itself.

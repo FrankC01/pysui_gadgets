@@ -18,6 +18,7 @@ import argparse
 from pathlib import Path
 from typing import Any, Sequence
 from pysui import ObjectID, SuiAddress
+from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
 
 
 def check_positive(value: str) -> int:
@@ -86,3 +87,24 @@ class ValidatePackageDir(argparse.Action):
         if not ppath.exists():
             parser.error(f"{str(ppath)} does not exist.")
         setattr(namespace, self.dest, ppath)
+
+
+class ValidateAlias(argparse.Action):
+    """Alias string validator."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        vlen: int = len(values)
+        if SUI_MIN_ALIAS_LEN <= vlen <= SUI_MAX_ALIAS_LEN:
+            setattr(namespace, self.dest, values)
+        else:
+            parser.error(
+                f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
+            )
+            sys.exit(-1)

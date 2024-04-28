@@ -14,7 +14,14 @@
 """pysui-gadget: DSL package command line parser."""
 import argparse
 
-from pysui_gadgets.utils.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
+from pysui_gadgets.utils.cmd_arg_validators import (
+    ValidateObjectID,
+    ValidateAddress,
+    ValidatePackageDir,
+    ValidateAlias,
+    check_positive,
+)
+
 
 # For dsl gadget
 def dsl_parser(in_args: list) -> argparse.Namespace:
@@ -25,7 +32,9 @@ def dsl_parser(in_args: list) -> argparse.Namespace:
     :return: Parse results
     :rtype: argparse.Namespace
     """
-    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [--command_options]")
+    parser = argparse.ArgumentParser(
+        add_help=True, usage="%(prog)s [--command_options]"
+    )
 
     parser.add_argument(
         "-m",
@@ -97,7 +106,11 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
         description="Merges all SUI Gas mists 'to one' SUI Gas object for an address",
     )
     parser.add_argument(
-        "-a", "--address", required=True, help="The address whose SUI coin to converge to one", action=ValidateAddress
+        "-a",
+        "--address",
+        required=True,
+        help="The address whose SUI coin to converge to one",
+        action=ValidateAddress,
     )
     parser.add_argument(
         "-p",
@@ -126,21 +139,33 @@ def package_parser(in_args: list) -> argparse.Namespace:
     :return: Parse results
     :rtype: argparse.Namespace
     """
-    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s command [--command_options]")
+    parser = argparse.ArgumentParser(
+        add_help=True, usage="%(prog)s command [--command_options]"
+    )
 
     subparser = parser.add_subparsers(title="commands", help="")
 
     # Simple listing of modules in package
     subp = subparser.add_parser("listmods", help="List package's modules")
     subp.add_argument(
-        "-m", "--move-package-id", required=True, help="The move package ObjectID on the chain", action=ValidateObjectID
+        "-m",
+        "--move-package-id",
+        required=True,
+        help="The move package ObjectID on the chain",
+        action=ValidateObjectID,
     )
     subp.set_defaults(subcommand="listmods")
 
     # Generate public entry or all function signatures for one or more package modules
-    subp = subparser.add_parser("genfuncs", help="Generate module's function signatures")
+    subp = subparser.add_parser(
+        "genfuncs", help="Generate module's function signatures"
+    )
     subp.add_argument(
-        "-m", "--move-package-id", required=True, help="The move package ObjectID on the chain", action=ValidateObjectID
+        "-m",
+        "--move-package-id",
+        required=True,
+        help="The move package ObjectID on the chain",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-n",
@@ -174,7 +199,11 @@ def package_parser(in_args: list) -> argparse.Namespace:
     # Informational displays about a package modules structures
     subp = subparser.add_parser("genstructs", help="Show module's struct information")
     subp.add_argument(
-        "-m", "--move-package-id", required=True, help="The move package ObjectID on the chain", action=ValidateObjectID
+        "-m",
+        "--move-package-id",
+        required=True,
+        help="The move package ObjectID on the chain",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-s",
@@ -250,16 +279,24 @@ def splay_parser(in_args: list) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         add_help=True,
         usage="%(prog)s [--command_options]",
-        description="Evenly distribute gas objects across zero (self) or more addresses",
+        description="Evenly distribute gas objects across one or more addresses. Can also splay to oneself.",
     )
-    parser.add_argument(
+    addy_arg_group = parser.add_mutually_exclusive_group(required=True)
+    addy_arg_group.add_argument(
         "-o",
         "--owner",
-        dest="owner",
-        required=True,
+        required=False,
+        help="The owner of coins to splay. Mutually exclusive with '-a'",
         action=ValidateAddress,
-        help="The owner of coins to splay",
     )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of owner of coins to splay. Mutually exclusive with '-o'.",
+        action=ValidateAlias,
+    )
+
     parser.add_argument(
         "-c",
         "--coins",
@@ -271,28 +308,28 @@ def splay_parser(in_args: list) -> argparse.Namespace:
     )
     me_parser = parser.add_mutually_exclusive_group(required=False)
     me_parser.add_argument(
-        "-a", "--address-owner", help="splays coins to owner only for count", type=int, dest="self_count"
+        "-s",
+        "--self-recipient",
+        help="Splays count of coins to owner only. Mutually exclusive with '-t'",
+        type=int,
+        dest="self_count",
     )
     me_parser.add_argument(
         "-t",
-        "--to-address",
+        "--to-addresses",
         dest="addresses",
         required=False,
         nargs="+",
-        help="splay coins to addresses.",
+        help="Splay coins to addresses. Defaults to all address in configuration. Mutually exclusive with '-s'",
         action=ValidateAddress,
     )
     parser.add_argument(
-        "-m",
-        "--merge-threshold",
-        dest="threshold",
+        "-i",
+        "--inspect",
+        help="Display transaction BCS structure and performs a dry run",
         required=False,
-        default=10,
-        help="Sets the number of coins to merge at a time. Defaults to 10.",
-        type=check_positive,
-    )
-    parser.add_argument(
-        "-i", "--inspect", help="inspect and do not execute", required=False, action="store_true", dest="inspect"
+        action="store_true",
+        dest="inspect",
     )
     return parser.parse_args(in_args if in_args else ["--help"])
 
@@ -322,7 +359,12 @@ def vh_parser(in_args: list) -> argparse.Namespace:
         help="output choices.",
     )
     parser.add_argument(
-        "-a", "--ascending", help="ascending order of output", required=False, action="store_true", dest="ascending"
+        "-a",
+        "--ascending",
+        help="ascending order of output",
+        required=False,
+        action="store_true",
+        dest="ascending",
     )
 
     return parser.parse_args(in_args if in_args else ["--help"])
