@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added address alias `-a, --alias` support in command line arguments
   - Added `-s, --self-recipient` support in command line arguments (used to be `-a, --address-owner`)
   - Removed `-m, --merge-threshold` from command line arguments
+- BREAKING for `to-one`:
+  - Changed '-a,--address` to `-o,--owner`
+  - Added address alias `-a, --alias` support
+  - Added `-i,--inspect` to print PTB and dry run the transaction
+  - Removed `-m, --merge-threshold` from command line arguments
+
+
 
 ## [0.4.3] - 2023-11-06
 

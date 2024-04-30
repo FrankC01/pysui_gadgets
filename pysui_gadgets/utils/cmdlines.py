@@ -105,12 +105,20 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
         usage="%(prog)s [--command_options]",
         description="Merges all SUI Gas mists 'to one' SUI Gas object for an address",
     )
-    parser.add_argument(
-        "-a",
-        "--address",
-        required=True,
-        help="The address whose SUI coin to converge to one",
+    addy_arg_group = parser.add_mutually_exclusive_group(required=True)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="The owner of coins to splay. Mutually exclusive with '-a'",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of owner of coins to splay. Mutually exclusive with '-o'.",
+        action=ValidateAlias,
     )
     parser.add_argument(
         "-p",
@@ -120,13 +128,14 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
         action=ValidateObjectID,
     )
     parser.add_argument(
-        "-m",
-        "--merge-threshold",
+        "-i",
+        "--inspect",
+        help="Display transaction BCS structure and performs a dry run",
         required=False,
-        default=10,
-        help="Sets the number of coins to merge at a time. Defaults to 10.",
-        type=check_positive,
+        action="store_true",
+        dest="inspect",
     )
+
     return parser.parse_args(in_args if in_args else ["--help"])
 
 

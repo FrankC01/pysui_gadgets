@@ -15,53 +15,14 @@
 """Splay - Splits coins evenly across addresses."""
 
 import sys
+import base64
 from typing import Optional
-from pysui import SuiConfig, SuiAddress
+from pysui import SuiConfig
 from pysui_gadgets.utils.cmdlines import splay_parser
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+import pysui_gadgets.utils.exec_helpers as utils
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_pgql.pgql_query as qn
-
-
-def _resolve_owner(config: SuiConfig, owner, alias):
-    """Resolve the parsers directive of coin ownership."""
-    owner_designate: SuiAddress = None
-    if owner:
-        owner_designate: SuiAddress = owner
-    elif alias:
-        owner_designate: SuiAddress = config.addr4al(alias)
-    else:
-        raise ValueError(f"Owner not designated.")
-
-    if owner_designate != config.active_address:
-        if owner_designate.address not in config.addresses:
-            raise ValueError(f"Missing private key for {owner_designate.address}")
-        print(f"Setting coin owner to {owner_designate.address}")
-        config.set_active_address(owner_designate)
-
-
-def _get_all_owner_gas(client: SuiGQLClient) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive all owners Gas Objects."""
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = []
-    owner: str = client.config.active_address.address
-    result = client.execute_query_node(with_node=qn.GetCoins(owner=owner))
-    while True:
-        if result.is_ok():
-            coin_list.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=owner, next_page=result.result_data.next_cursor
-                    )
-                )
-            else:
-                break
-        else:
-            raise ValueError(f"GetCoins error {result.result_string}")
-    if not coin_list:
-        raise ValueError(f"{owner} has no Sui coins to splay")
-    return coin_list
 
 
 def _consolidate_coin(
@@ -111,41 +72,13 @@ def _split_and_distribute_coins(
         dlen = len(distro)
         partial_balance = int(total_balance / (dlen if dlen > 1 else 2))
         distro_balances = [partial_balance for x in distro]
-        # result = txn.split_coin(coin=txn.gas, amounts=distro_balances)
+        result = txn.split_coin(coin=txn.gas, amounts=distro_balances)
         for index, target in enumerate(distro):
-            txn.transfer_sui(
-                from_coin=txn.gas, recipient=target, amount=distro_balances[index]
-            )
+            txn.transfer_objects(transfers=[result[index]], recipient=target)
+            # txn.transfer_sui(
+            #     from_coin=txn.gas, recipient=target, amount=distro_balances[index]
+            # )
             # txn.transfer_sui(recipient=target, from_coin=result[index])
-
-
-def _inspect(
-    client: SuiGQLClient, txn: SuiTransaction, target_gas=pgql_type.SuiCoinObjectGQL
-):
-    """."""
-    print(txn.raw_kind().to_json(indent=2))
-    tx_bytes = txn.build(use_gas_objects=[target_gas])
-    result = client.execute_query_node(
-        with_node=qn.DryRunTransaction(tx_bytestr=tx_bytes)
-    )
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        raise ValueError(f"Error in dry run {result.result_string}")
-
-
-def _execute(
-    client: SuiGQLClient, txn: SuiTransaction, target_gas=pgql_type.SuiCoinObjectGQL
-):
-    """."""
-    tx_b64, sig_array = txn.build_and_sign(use_gas_objects=[target_gas])
-    result = client.execute_query_node(
-        with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
-    )
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        raise ValueError(f"Error in dry run {result.result_string}")
 
 
 def main():
@@ -156,7 +89,7 @@ def main():
     cfg_file = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = True
+        print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
     parsed = splay_parser(arg_line)
     print(parsed)
@@ -166,9 +99,9 @@ def main():
         cfg = SuiConfig.default_config()
 
     try:
-        _resolve_owner(cfg, parsed.owner, parsed.alias)
+        utils.util_resolve_owner(cfg, parsed.owner, parsed.alias)
         sui_client = SuiGQLClient(config=cfg)
-        all_gas = _get_all_owner_gas(sui_client)
+        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address.address)
         target_gas, transaction, total_balance = _consolidate_coin(
             sui_client, all_gas, parsed.coins
         )
@@ -182,9 +115,9 @@ def main():
                 use_addresses = [x.address for x in parsed.addresses]
             _split_and_distribute_coins(transaction, use_addresses, total_balance)
         if parsed.inspect:
-            _inspect(sui_client, transaction, target_gas)
+            utils.util_inspect(sui_client, transaction, target_gas)
         else:
-            _execute(sui_client, transaction, target_gas)
+            utils.util_execute(sui_client, transaction, target_gas)
 
     except ValueError as ve:
         print(ve)

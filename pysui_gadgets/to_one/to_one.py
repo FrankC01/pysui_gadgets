@@ -11,55 +11,53 @@
 
 # -*- coding: utf-8 -*-
 
-"""pysui_gadgets: To One main module."""
+"""pysui_gadgets: Collapse two or more coints for address."""
 
 
 import sys
-import argparse
+from typing import Optional
 
-
-from pysui import SyncClient, SuiConfig, handle_result
-from pysui.sui.sui_txn import SyncTransaction
-from pysui.sui.sui_utils import partition
+from pysui import SuiConfig
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+import pysui_gadgets.utils.exec_helpers as utils
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui_gadgets.utils.cmdlines import to_one_parser
-from pysui_gadgets.utils.exec_helpers import add_owner_to_gas_object
 
 
-def _join_coins(client: SyncClient, args: argparse.Namespace):
-    """Using PayAllSui builder, join all mists from all gas object to one for an address."""
-    gas_res: list = handle_result(client.get_gas(args.address, True)).data
-    if len(gas_res) < 2:
-        print("Can't join with less than 2 coins")
-        return
-    # Resolve primary by argument or selection
-    if args.primary:
-        index = [x.object_id for x in gas_res].index(args.primary.value)
-        primary = gas_res.pop(index)
+def _to_one_coin(
+    client: SuiGQLClient,
+    coins: list[pgql_type.SuiCoinObjectGQL],
+    primary_coin: Optional[str],
+) -> tuple[pgql_type.SuiCoinObjectGQL, SuiTransaction]:
+    """Setup consolidation of coins in play."""
+
+    target_gas: pgql_type.SuiCoinObjectGQL = None
+    # If primary coin, remove from coin list
+    if primary_coin:
+        p_pos: int = -1
+        for index, coin in enumerate(coins):
+            if primary_coin == coin.object_id:
+                p_pos = index
+                target_gas = coin
+                coins.remove(target_gas)
+                break
+        if p_pos < 0:
+            raise ValueError(
+                f"Primary coin {primary_coin} not found in owner's gas coins"
+            )
     else:
-        primary = gas_res[0]
-        gas_res = gas_res[1:]
-    owner = args.address.address
-    gas_res = [add_owner_to_gas_object(owner, x) for x in gas_res]
-    converted = 0
+        target_gas = coins[0]
+        coins = coins[1:]
 
-    if len(gas_res) <= args.merge_threshold:
-        txn = SyncTransaction(client=client, initial_sender=args.address)
-        _ = txn.merge_coins(merge_to=txn.gas, merge_from=gas_res)
-        result = txn.execute(use_gas_object=primary.object_id)
-    else:
-        # Partition the gas_res into _MAX_INPUTS chunks
-        for chunk in list(partition(gas_res, args.merge_threshold)):
-            chunk_count = len(chunk)
-            txn = SyncTransaction(client=client, initial_sender=args.address)
-            _ = txn.merge_coins(merge_to=txn.gas, merge_from=chunk)
-            result = txn.execute(use_gas_object=primary.object_id)
-            if result.is_ok():
-                converted += chunk_count
-            else:
-                print(f"Failure on coin in range {converted} -> {result.result_string}")
-                return
-    print(f"Succesfully merged {converted} coins to {primary.object_id}")
-    print(handle_result(client.get_object(primary.object_id)).to_json(indent=2))
+    # Merge all remaining coins to gas
+    # preserving the target gas coint
+    txn = SuiTransaction(client=client)
+    txn.merge_coins(merge_to=txn.gas, merge_from=coins)
+    return (
+        target_gas,
+        txn,
+    )
 
 
 def main():
@@ -70,7 +68,7 @@ def main():
     cfg_file = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = True
+        print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
     parsed = to_one_parser(arg_line)
     if cfg_file:
@@ -78,8 +76,23 @@ def main():
     else:
         cfg = SuiConfig.default_config()
 
-    # Run the job
-    _join_coins(SyncClient(cfg), parsed)
+    try:
+        utils.util_resolve_owner(cfg, parsed.owner, parsed.alias)
+        sui_client = SuiGQLClient(config=cfg)
+        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address.address)
+        if len(all_gas) == 1:
+            raise ValueError("to-one requires the owner has more than 1 gas coin.")
+
+        target_gas, transaction = _to_one_coin(
+            sui_client, all_gas, (parsed.primary.value if parsed.primary else None)
+        )
+        if parsed.inspect:
+            utils.util_inspect(sui_client, transaction, target_gas)
+        else:
+            utils.util_execute(sui_client, transaction, target_gas)
+
+    except ValueError as ve:
+        print(ve)
 
 
 if __name__ == "__main__":
