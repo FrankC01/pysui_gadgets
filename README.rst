@@ -80,4 +80,14 @@ Running gadgets
 splay
 ~~~~~
 
-Evenly distribute gas objects across one or more addresses. Can also splay to owner itself.
+Evenly distribute gas objects across one or more addresses. Can also just splay to owner itself.
+
+to-one
+~~~~~~
+
+Merge all addresses gas object to one. Can target primary receipient coin.
+
+vh
+~~
+
+Traverse and objects history.

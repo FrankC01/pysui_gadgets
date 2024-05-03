@@ -19,7 +19,9 @@ from dataclasses import dataclass
 from typing import Union
 import json
 from dataclasses_json import DataClassJsonMixin
-from pysui import SuiConfig, SyncClient, handle_result
+from pysui import SuiConfig, handle_result
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_builders.get_builders import GetTx
 from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectNotExist
 from pysui.sui.sui_txresults.complex_tx import TxResponse
@@ -76,7 +78,7 @@ class ObjectHistory:
     """Collection Class."""
 
     def __init__(
-        self, client: SyncClient, vh_type: ObjType, versions: list[ObjectState]
+        self, client: SuiGQLClient, vh_type: ObjType, versions: list[ObjectState]
     ):
         """Instance initializer."""
         self.client = client
@@ -124,8 +126,14 @@ class ObjectHistory:
         self._walk_it(base_version.object_ref.object_id, base_version.tx_context)
 
 
-def walk_history(client: SyncClient, target_object_id: str) -> ObjectHistory:
+def walk_history(client: SuiGQLClient, target_object_id: str) -> ObjectHistory:
     """Walk history for provided target object."""
+    client.execute_query_node(
+        with_node=qn.GetObject(
+            object_id="0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc"
+        )
+    )
+
     obj_read: ObjectRead = handle_result(client.get_object(target_object_id))
     if not isinstance(obj_read, ObjectNotExist):
         prev_tx = obj_read.previous_transaction
@@ -202,7 +210,7 @@ def main():
         cfg = SuiConfig.default_config()
     # Version history
     produce_output(
-        walk_history(SyncClient(cfg), parsed.target_object),
+        walk_history(SuiGQLClient(config=cfg), parsed.target_object),
         parsed.output,
         parsed.ascending,
     )

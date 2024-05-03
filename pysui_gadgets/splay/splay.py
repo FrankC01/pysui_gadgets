@@ -92,7 +92,7 @@ def main():
         print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
     parsed = splay_parser(arg_line)
-    print(parsed)
+
     if cfg_file:
         cfg = SuiConfig.sui_base_config()
     else:

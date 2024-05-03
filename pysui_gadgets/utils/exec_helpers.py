@@ -117,9 +117,8 @@ def util_inspect(
         #     }
         # ],
     }
-    result = client.execute_query_node(
-        with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64, tx_meta=options)
-    )
+    drtk = qn.DryRunTransactionKind(tx_bytestr=tx_b64, tx_meta=options)
+    result = client.execute_query_node(with_node=drtk)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
