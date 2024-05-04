@@ -90,4 +90,4 @@ Merge all addresses gas object to one. Can target primary receipient coin.
 vh
 ~~
 
-Traverse and objects history.
+Traverse an objects history.

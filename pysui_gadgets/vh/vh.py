@@ -19,10 +19,10 @@ from dataclasses import dataclass
 from typing import Union
 import json
 from dataclasses_json import DataClassJsonMixin
-from pysui import SuiConfig, SyncClient, handle_result
-from pysui.sui.sui_builders.get_builders import GetTx
-from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectNotExist
-from pysui.sui.sui_txresults.complex_tx import TxResponse
+from pysui import SuiConfig
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_pgql.pgql_query as qn
 
 from pysui_gadgets.utils.cmdlines import vh_parser
 
@@ -37,17 +37,17 @@ class ObjType(IntEnum):
     STAKED_COIN = 4
 
     @classmethod
-    def type_is(cls, in_type: ObjectRead) -> "ObjType":
+    def type_is(cls, in_type: pgql_type.ObjectReadGQL) -> "ObjType":
         """Determine classifier."""
         have_type = None
         in_type: str = in_type.object_type
-        if in_type == "package":
+        if in_type == "Package":
             have_type = ObjType.PACKAGE
-        elif in_type.startswith("0x2::coin::Coin"):
+        elif "sui::SUI" in in_type:
             have_type = ObjType.COIN
-        elif in_type == "0x2::package::UpgradeCap":
+        elif "UpgradeCap" in in_type:
             have_type = ObjType.UPGRADECAP
-        elif in_type == "0x3::staking_pool::StakedSui":
+        elif "StakedSui" in in_type:
             have_type = ObjType.STAKED_COIN
         else:
             have_type = ObjType.OBJECT
@@ -58,8 +58,8 @@ class ObjType(IntEnum):
 class ObjectState:
     """Represents an object instance associated to Object version."""
 
-    object_ref: ObjectRead
-    tx_context: TxResponse
+    object_ref: pgql_type.ObjectReadGQL
+    tx_context: pgql_type.TransactionResultGQL
 
     @property
     def version(self) -> str:
@@ -69,14 +69,14 @@ class ObjectState:
     @property
     def timestamp(self) -> int:
         """Fetch the state timestamp."""
-        return int(self.tx_context.timestamp_ms)
+        return self.tx_context.effects["timestamp"]
 
 
 class ObjectHistory:
     """Collection Class."""
 
     def __init__(
-        self, client: SyncClient, vh_type: ObjType, versions: list[ObjectState]
+        self, client: SuiGQLClient, vh_type: ObjType, versions: list[ObjectState]
     ):
         """Instance initializer."""
         self.client = client
@@ -93,30 +93,34 @@ class ObjectHistory:
         return self.last_index
 
     def _scan_for_previous(
-        self, target_id: str, current_txn: TxResponse
-    ) -> Union[str, None]:
+        self, target_id: str, current_txn: pgql_type.TransactionResultGQL
+    ) -> Union[int, None]:
         """Find previous version if any."""
         # First check object_changes
-        for changes in current_txn.object_changes:
-            if "objectId" in changes:
-                if changes["objectId"] == target_id:
-                    if changes["type"] == "mutated":
-                        return changes["previousVersion"]
+        for changes in current_txn.effects["objectChanges"]["nodes"]:
+            if "address" in changes:
+                if changes["address"] == target_id:
+                    if changes["created"]:
+                        return None
+                    if "input_state" in changes and "output_state" in changes:
+                        return changes["input_state"]["version"]
         return None
 
-    def _walk_it(self, target_id: str, current_txn: TxResponse):
+    def _walk_it(self, target_id: str, current_txn: pgql_type.TransactionResultGQL):
         """Recursive walk through changes if found."""
         previous_version = self._scan_for_previous(target_id, current_txn)
         if previous_version:
-            obj_read: ObjectRead = handle_result(
-                self.client.get_object(target_id, int(previous_version))
+            obj_read: pgql_type.ObjectReadGQL = _get_object_pv(
+                self.client, target_id, previous_version
             )
-            if not isinstance(obj_read, ObjectNotExist):
-                txn: TxResponse = handle_result(
-                    self.client.execute(GetTx(digest=obj_read.previous_transaction))
-                )
-                self.append_version(ObjectState(obj_read, txn))
-                self._walk_it(target_id, txn)
+            result = self.client.execute_query_node(
+                with_node=qn.GetTx(digest=obj_read.previous_transaction_digest)
+            )
+            if result.is_ok():
+                self.append_version(ObjectState(obj_read, result.result_data))
+                self._walk_it(target_id, result.result_data)
+            else:
+                raise ValueError(result.result_string)
 
     def scan(self):
         """Initialize history walk."""
@@ -124,17 +128,61 @@ class ObjectHistory:
         self._walk_it(base_version.object_ref.object_id, base_version.tx_context)
 
 
-def walk_history(client: SyncClient, target_object_id: str) -> ObjectHistory:
+def _get_object_pv(
+    client: SuiGQLClient, object_id: str, previous: int
+) -> pgql_type.ObjectReadGQL:
+    """."""
+    result = client.execute_query_node(
+        with_node=qn.GetPastObject(
+            object_id=object_id,
+            version=previous,
+        )
+    )
+
+    if result.is_ok():
+        if isinstance(
+            result.result_data, (pgql_type.ObjectReadDeletedGQL, pgql_type.NoopGQL)
+        ):
+            raise ValueError(
+                f"Object {object_id} does not exist or has been wrapped or deleted on chain"
+            )
+        return result.result_data
+    else:
+        raise ValueError(result.result_string)
+
+
+def _get_object_now(client: SuiGQLClient, object_id: str) -> pgql_type.ObjectReadGQL:
+    """."""
+    result = client.execute_query_node(
+        with_node=qn.GetObject(object_id=object_id.value)
+    )
+    if result.is_ok():
+        if isinstance(
+            result.result_data, (pgql_type.ObjectReadDeletedGQL, pgql_type.NoopGQL)
+        ):
+            raise ValueError(
+                f"Object {object_id} does not exist or has been wrapped or deleted on chain"
+            )
+        return result.result_data
+    else:
+        raise ValueError(result.result_string)
+
+
+def walk_history(client: SuiGQLClient, target_object_id: str) -> ObjectHistory:
     """Walk history for provided target object."""
-    obj_read: ObjectRead = handle_result(client.get_object(target_object_id))
-    if not isinstance(obj_read, ObjectNotExist):
-        prev_tx = obj_read.previous_transaction
-        txn: TxResponse = handle_result(client.execute(GetTx(digest=prev_tx)))
+    obj_read: pgql_type.ObjectReadGQL = _get_object_now(client, target_object_id)
+    prev_tx = obj_read.previous_transaction_digest
+    result = client.execute_query_node(with_node=qn.GetTx(digest=prev_tx))
+    if result.is_ok():
+        txn: pgql_type.TransactionResultGQL = result.result_data
         context = ObjectState(obj_read, txn)
-        vh_hist = ObjectHistory(client, ObjType.type_is(obj_read), [context])
-        vh_hist.scan()
+        obj_type = ObjType.type_is(obj_read)
+        vh_hist = ObjectHistory(client, obj_type, [context])
+        if obj_type != ObjType.PACKAGE:
+            vh_hist.scan()
         return vh_hist
-    raise ValueError(f"Object {target_object_id} does not exist on chain")
+    else:
+        raise ValueError(result.result_string)
 
 
 def _reverse_history(history: ObjectHistory, ascending: bool) -> list:
@@ -150,7 +198,13 @@ def _reverse_history(history: ObjectHistory, ascending: bool) -> list:
 class ObjectContainer(DataClassJsonMixin):
     """."""
 
-    history: list[Union[tuple[ObjectRead, TxResponse], ObjectRead, TxResponse]]
+    history: list[
+        Union[
+            tuple[pgql_type.ObjectReadGQL, pgql_type.TransactionResultGQL],
+            pgql_type.ObjectReadGQL,
+            pgql_type.TransactionResultGQL,
+        ]
+    ]
 
     @classmethod
     def from_history(
@@ -201,11 +255,14 @@ def main():
     else:
         cfg = SuiConfig.default_config()
     # Version history
-    produce_output(
-        walk_history(SyncClient(cfg), parsed.target_object),
-        parsed.output,
-        parsed.ascending,
-    )
+    try:
+        produce_output(
+            walk_history(SuiGQLClient(config=cfg), parsed.target_object),
+            parsed.output,
+            parsed.ascending,
+        )
+    except ValueError as ve:
+        print(ve)
 
 
 if __name__ == "__main__":
