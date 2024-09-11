@@ -17,7 +17,7 @@
 import sys
 from typing import Optional
 
-from pysui import SuiConfig
+from pysui import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 import pysui_gadgets.utils.exec_helpers as utils
@@ -65,21 +65,20 @@ def main():
     # Parse module meta data pulling out relevant content
     # to generate struct->class and functions->class
     arg_line = sys.argv[1:].copy()
-    cfg_file = False
-    # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
         print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
-    parsed = to_one_parser(arg_line)
-    if cfg_file:
-        cfg = SuiConfig.sui_base_config()
-    else:
-        cfg = SuiConfig.default_config()
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP  # , profile_name="testnet"
+    )
+
+    parsed = to_one_parser(arg_line, cfg)
+    cfg.make_active(profile_name=parsed.profile_name, persist=False)
 
     try:
         utils.util_resolve_owner(cfg, parsed.owner, parsed.alias)
-        sui_client = SuiGQLClient(config=cfg)
-        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address.address)
+        sui_client = SuiGQLClient(pysui_config=cfg)
+        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address)
         if len(all_gas) == 1:
             raise ValueError("to-one requires the owner has more than 1 gas coin.")
 

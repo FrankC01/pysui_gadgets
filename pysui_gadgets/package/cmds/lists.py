@@ -13,16 +13,15 @@
 
 """List commands and utilities."""
 
-from argparse import Namespace
-from pysui.sui.sui_txresults import SuiMoveModule
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 
-def print_module_list(mods: dict[str, SuiMoveModule], args: Namespace) -> None:
+def print_module_list(mods: list[pgql_type.MoveModuleGQL], package_id: str) -> None:
     """list_mods Prints list of the SuiMovePackage modules to stdout.
 
-    :param mods: SuiMovePackage's module dictionary
-    :type package: list[str,SuiMoveModule
+    :param mods: List of package modules
+    :type package: list[pgql_type.MoveModuleGQL]
     """
-    print(f"\nModules from package: {args.move_package_id}")
-    for mod_name in mods.keys():
-        print(f"\tName: {mod_name}")
+    print(f"\nModules from package: {package_id}")
+    for mmodule in mods:
+        print(f"\tName: {mmodule.module_name}")

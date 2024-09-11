@@ -17,7 +17,7 @@
 import sys
 import base64
 from typing import Optional
-from pysui import SuiConfig
+from pysui import PysuiConfiguration
 from pysui_gadgets.utils.cmdlines import splay_parser
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
@@ -75,10 +75,6 @@ def _split_and_distribute_coins(
         result = txn.split_coin(coin=txn.gas, amounts=distro_balances)
         for index, target in enumerate(distro):
             txn.transfer_objects(transfers=[result[index]], recipient=target)
-            # txn.transfer_sui(
-            #     from_coin=txn.gas, recipient=target, amount=distro_balances[index]
-            # )
-            # txn.transfer_sui(recipient=target, from_coin=result[index])
 
 
 def main():
@@ -86,22 +82,20 @@ def main():
     # Parse module meta data pulling out relevant content
     # to generate struct->class and functions->class
     arg_line = sys.argv[1:].copy()
-    cfg_file = False
     # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
         print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
-    parsed = splay_parser(arg_line)
-
-    if cfg_file:
-        cfg = SuiConfig.sui_base_config()
-    else:
-        cfg = SuiConfig.default_config()
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP  # , profile_name="testnet"
+    )
+    parsed = splay_parser(arg_line, cfg)
+    cfg.make_active(profile_name=parsed.profile_name, persist=False)
 
     try:
         utils.util_resolve_owner(cfg, parsed.owner, parsed.alias)
-        sui_client = SuiGQLClient(config=cfg)
-        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address.address)
+        sui_client = SuiGQLClient(pysui_config=cfg)
+        all_gas = utils.util_get_all_owner_gas(sui_client, cfg.active_address)
         target_gas, transaction, total_balance = _consolidate_coin(
             sui_client, all_gas, parsed.coins
         )

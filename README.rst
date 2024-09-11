@@ -6,7 +6,6 @@ pysui-gadgets includes tools and utilities that work with the pysui SDK.
 Gadgets included:
 
 * package - Performs operations that leverages meta-data about SUI move packages (smart-contracts)
-* dsl-gen - Creates python representation of move package key structs and entry point functions
 * to-one - Merges all SUI Gas mists 'to one' SUI Gas object for an address
 * splay - Evenly distribute coins from one address to many
 * vh - History of object versions
@@ -73,9 +72,7 @@ Running gadgets
     splay -h
     to-one -h
     vh -h
-    module -h
     package -h
-    dslgen -h
 
 splay
 ~~~~~
@@ -91,3 +88,8 @@ vh
 ~~
 
 Traverse an objects history.
+
+package
+~~~~~~~
+
+Display aspects of a Sui mmove package.

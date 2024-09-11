@@ -17,9 +17,10 @@ import sys
 from enum import IntEnum
 from dataclasses import dataclass
 from typing import Union
+from functools import reduce
 import json
 from dataclasses_json import DataClassJsonMixin
-from pysui import SuiConfig
+from pysui import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -151,46 +152,139 @@ def _get_object_pv(
         raise ValueError(result.result_string)
 
 
-def _get_object_now(client: SuiGQLClient, object_id: str) -> pgql_type.ObjectReadGQL:
-    """."""
+def _get_all_txns(
+    client: SuiGQLClient,
+    object_id: str,
+    includes: bool,
+    changes: bool,
+    both: bool,
+) -> list[pgql_type.TransactionSummaryGQL]:
+    """Retrieves all previous versions of object_id."""
+    history_filter: dict[str, str] = {}
+    if includes:
+        history_filter["inputObject"] = object_id
+    elif changes:
+        history_filter["changedObject"] = object_id
+    elif both:
+        history_filter["inputObject"] = object_id
+        history_filter["changedObject"] = object_id
+
     result = client.execute_query_node(
-        with_node=qn.GetObject(object_id=object_id.value)
+        with_node=qn.GetFilteredTx(tx_filter=history_filter)
     )
+    tx_list: list[pgql_type.TransactionSummaryGQL] = []
+    while result.is_ok():
+        txs: pgql_type.TransactionSummariesGQL = result.result_data
+        tx_list.extend(txs.data)
+        if txs.next_cursor.hasNextPage:
+            result = client.execute_query_node(
+                with_node=qn.GetFilteredTx(
+                    tx_filter=history_filter, next_page=txs.next_cursor
+                )
+            )
+        else:
+            break
+    if result.is_err():
+        raise ValueError(result.result_string)
+    return tx_list
+
+
+def _get_object_now(client: SuiGQLClient, object_id: str) -> pgql_type.ObjectReadGQL:
+    """Retrieves current state object by object_id."""
+    result = client.execute_query_node(with_node=qn.GetObject(object_id=object_id))
     if result.is_ok():
         if isinstance(
             result.result_data, (pgql_type.ObjectReadDeletedGQL, pgql_type.NoopGQL)
         ):
             raise ValueError(
-                f"Object {object_id} does not exist or has been wrapped or deleted on chain"
+                f"Object '{object_id}' does not exist, is has been wrapped or has been deleted."
             )
         return result.result_data
     else:
         raise ValueError(result.result_string)
 
 
-def walk_history(client: SuiGQLClient, target_object_id: str) -> ObjectHistory:
+def _get_transaction(
+    client: SuiGQLClient, digest: str
+) -> pgql_type.TransactionResultGQL:
+    """Retrieves transaction details for digest."""
+    result = client.execute_query_node(with_node=qn.GetTx(digest=digest))
+    if result.is_ok():
+        return result.result_data
+    raise ValueError(result.result_string)
+
+
+@dataclass
+class History:
+    client: SuiGQLClient
+    object_id: str
+    object_type: ObjType
+    object_states: list[ObjectState]
+
+
+def _walker(accum: History, value: pgql_type.TransactionSummaryGQL):
+    """."""
+    # Get the summary detailed transaction
+    current_tx = _get_transaction(accum.client, value.digest)
+    for changes in current_tx.effects["objectChanges"]["nodes"]:
+        if "address" in changes:
+            if changes["address"] == accum.object_id:
+                if changes["created"]:
+                    pass
+                if "input_state" in changes and "output_state" in changes:
+                    accum.object_states.append(
+                        ObjectState(
+                            _get_object_pv(
+                                accum.client,
+                                accum.object_id,
+                                changes["input_state"]["version"],
+                            ),
+                            current_tx,
+                        )
+                    )
+
+    # Get the previous version to fetch the object at said state
+    return accum
+
+
+def walk_history(
+    client: SuiGQLClient,
+    target_object_id: str,
+    includes: bool,
+    changes: bool,
+    both: bool,
+) -> History:
     """Walk history for provided target object."""
     obj_read: pgql_type.ObjectReadGQL = _get_object_now(client, target_object_id)
-    prev_tx = obj_read.previous_transaction_digest
-    result = client.execute_query_node(with_node=qn.GetTx(digest=prev_tx))
-    if result.is_ok():
-        txn: pgql_type.TransactionResultGQL = result.result_data
-        context = ObjectState(obj_read, txn)
-        obj_type = ObjType.type_is(obj_read)
-        vh_hist = ObjectHistory(client, obj_type, [context])
-        if obj_type != ObjType.PACKAGE:
-            vh_hist.scan()
-        return vh_hist
-    else:
-        raise ValueError(result.result_string)
+    all_txns: list[pgql_type.TransactionSummaryGQL] = _get_all_txns(
+        client, target_object_id, includes, changes, both
+    )
+    result_states: History = None
+    if all_txns:
+        # Reverse list to descending order
+        all_txns.reverse()
+        # Get base type
+        obj_states: list[ObjectState] = [
+            ObjectState(obj_read, _get_transaction(client, all_txns[0].digest))
+        ]
+        result_states: History = reduce(
+            _walker,
+            all_txns,
+            History(
+                client,
+                target_object_id,
+                ObjType.type_is(obj_read),
+                obj_states,
+            ),
+        )
+    return result_states
 
 
-def _reverse_history(history: ObjectHistory, ascending: bool) -> list:
+def _reverse_history(history: History, ascending: bool) -> list:
     """Reverse history or return as is."""
-    history_list = history.versions
+    history_list = history.object_states
     if ascending:
-        start = len(history_list) - 1
-        history_list = [history_list[i] for i in range(start, -1, -1)]
+        history_list.reverse()
     return history_list
 
 
@@ -225,13 +319,17 @@ class ObjectContainer(DataClassJsonMixin):
         return instance
 
 
-def produce_output(history: ObjectHistory, choice: str, ascending: bool):
+def produce_output(history: History, choice: str, ascending: bool):
     """Generate history output."""
     results = []
     if choice == "summary":
         history_list = _reverse_history(history, ascending)
         results = [
-            {"version": version.version, "timestamp_ms": version.timestamp}
+            {
+                "version": version.version,
+                "timestamp_ms": version.timestamp,
+                "content": version.object_ref.content,
+            }
             for version in history_list
         ]
         print(json.dumps(results, indent=2))
@@ -243,21 +341,24 @@ def produce_output(history: ObjectHistory, choice: str, ascending: bool):
 def main():
     """Main entry point."""
     arg_line = sys.argv[1:].copy()
-    use_suibase = False
-    # Handle a different client.yaml other than default
-    # Handle a different client.yaml other than default
     if arg_line and arg_line[0] == "--local":
         print("suibase does not support Sui GraphQL at this time.")
         arg_line = arg_line[1:]
-    parsed = vh_parser(arg_line)
-    if use_suibase:
-        cfg = SuiConfig.sui_base_config()
-    else:
-        cfg = SuiConfig.default_config()
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP  # , profile_name="testnet"
+    )
+    parsed = vh_parser(arg_line, cfg)
+    cfg.make_active(profile_name=parsed.profile_name, persist=False)
     # Version history
     try:
         produce_output(
-            walk_history(SuiGQLClient(config=cfg), parsed.target_object),
+            walk_history(
+                SuiGQLClient(pysui_config=cfg),
+                parsed.target_object.value,
+                parsed.includes,
+                parsed.changes,
+                parsed.both,
+            ),
             parsed.output,
             parsed.ascending,
         )

@@ -32,14 +32,12 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = ["pysui>=0.59.0"]
+dependencies = ["pysui>=0.68.0"]
 dynamic = ["version", "readme"]
 
 
 [project.scripts]
 package = "pysui_gadgets.package.package:main"
-module = "pysui_gadgets.module.module:main"
-dslgen = "pysui_gadgets.dsl.dslgen:main"
 to-one = "pysui_gadgets.to_one.to_one:main"
 splay = "pysui_gadgets.splay.splay:main"
 vh = "pysui_gadgets.vh.vh:main"

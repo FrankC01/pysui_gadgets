@@ -13,7 +13,6 @@
 
 """Package function commands and utilities."""
 
-from argparse import Namespace
 from typing import Any
 
 from pysui.sui.sui_txresults.package_meta import (
@@ -25,7 +24,7 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiMoveFunction,
     SuiMoveModule,
 )
-
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui_gadgets.utils.filters import (
     filter_modules_excluding,
     filter_modules_with_including,
@@ -40,8 +39,8 @@ def _sig_parm_types(holder: list, sig: str) -> str:
         tcount = 0
         sig += "<"
         for abiltity_set in holder:
-            if abiltity_set.abilities:
-                sig += f"T{tcount}: {' + '.join(abiltity_set.abilities)}"
+            if "constraints" in abiltity_set:
+                sig += f"T{tcount}: {' + '.join(abiltity_set['constraints'])}"
                 tcount += 1
                 if tcount < tlen:
                     sig += ", "
@@ -51,7 +50,7 @@ def _sig_parm_types(holder: list, sig: str) -> str:
     return sig
 
 
-def _func_sig(fname: str, dfunc: SuiMoveFunction) -> str:
+def _func_sig(fname: str, dfunc: pgql_type.MoveFunctionGQL) -> str:
     """_func_sig Builds the signature prefix.
 
     :param fname: Function name
@@ -64,7 +63,7 @@ def _func_sig(fname: str, dfunc: SuiMoveFunction) -> str:
     sig = ""
     if dfunc.is_entry:
         sig = f"public entry fun {fname}"
-    elif dfunc.visibility == "Public":
+    elif dfunc.visibility == "PUBLIC":
         sig = f"public fun {fname}"
     else:
         sig = f"fun {fname}"
@@ -84,36 +83,35 @@ def _new_func_params(parm: Any, sig: str) -> str:
     :return: signature current state
     :rtype: str
     """
-    if isinstance(parm, str):
-        sig += parm
-    elif isinstance(parm, SuiParameterReference):
-        sig += "&" if not parm.is_mutable else "&mut "
-        sig = _new_func_params(parm.reference_to, sig)
-    elif isinstance(parm, SuiParameterStruct):
-        sig += parm.name
-        if parm.type_arguments:
-            sig += "<"
-            for smpt in parm.type_arguments:
-                sig = _new_func_params(smpt, sig)
-            sig += ">"
-    elif isinstance(parm, SuiMoveParameterType):
-        sig += f"<T{str(parm.type_parameters_index)}>"
-    elif isinstance(parm, SuiMoveVector):
-        sig += "vector<"
-        sig = _new_func_params(parm.vector_of, sig)
-        sig += ">"
-    elif isinstance(parm, SuiMoveScalarArgument):
-        sig += parm.scalar_type
-    else:
-        raise AttributeError(f"Not handling {parm}")
+    if fparms := parm.get("signature"):
+        if sref := fparms.get("ref"):
+            sig += sref
+        if sbody := fparms.get("body"):
+            if isinstance(sbody, str):
+                sig += sbody
+            elif dtype := sbody.get("datatype"):
+                if dtype.get("package"):
+                    sig += (
+                        dtype.get("package")
+                        + "::"
+                        + dtype.get("module")
+                        + "::"
+                        + dtype.get("type")
+                    )
+                    if tpars := dtype.get("typeParameters"):
+                        sig += "<"
+                        sig += ",".join(
+                            ["T" + str(x.get("typeParameter")) for x in tpars]
+                        )
+                        sig += ">"
     return sig
 
 
-def _build_func_signature(func_desc: dict[str, SuiMoveFunction]) -> str:
+def _build_func_signature(func_desc: dict[str, pgql_type.MoveFunctionGQL]) -> str:
     """_build_func_signature Builds a functions signature string.
 
     :param func_desc: Dictionary with func_name:func_definition
-    :type func_desc: dict[str, SuiMoveFunction]
+    :type func_desc: dict[str, pgql_type.MoveFunctionGQL]
     :return: Signature string
     :rtype: str
     """
@@ -151,7 +149,12 @@ def _build_func_signature(func_desc: dict[str, SuiMoveFunction]) -> str:
     return sig
 
 
-def print_function_signatures(mods: dict[str, SuiMoveModule], args: Namespace) -> None:
+def print_function_signatures(
+    raw_mods: list[pgql_type.MoveModuleGQL],
+    includes: set,
+    excludes: set,
+    nonentries: bool,
+) -> None:
     """function_signatures Generate function signatures from package's modules.
 
     :param mods: Package's modules dictionary
@@ -159,12 +162,20 @@ def print_function_signatures(mods: dict[str, SuiMoveModule], args: Namespace) -
     :param args: Filtering criteria
     :type args: argparse.Namespace
     """
-    if args.includes:
-        modules = filter_modules_with_including(mods=mods, includes=args.includes, nonentries=args.nonentries)
-    elif args.excludes:
-        modules = filter_modules_excluding(mods=mods, excludes=args.excludes, nonentries=args.nonentries)
+    mods: dict[str, pgql_type.MoveModuleGQL] = {
+        module.module_name: module for module in raw_mods
+    }
+
+    if includes:
+        modules = filter_modules_with_including(
+            mods=mods, includes=includes, nonentries=nonentries
+        )
+    elif excludes:
+        modules = filter_modules_excluding(
+            mods=mods, excludes=excludes, nonentries=nonentries
+        )
     else:
-        modules = filter_modules_with_entry_points(mods=mods, nonentries=args.nonentries)
+        modules = filter_modules_with_entry_points(mods=mods, nonentries=nonentries)
 
     # modules = _filter_functions(mods, args)
     for mod_key, mod_func_list in modules.items():

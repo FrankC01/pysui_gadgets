@@ -14,6 +14,8 @@
 """pysui-gadget: DSL package command line parser."""
 import argparse
 
+from pysui import PysuiConfiguration
+
 from pysui_gadgets.utils.cmd_arg_validators import (
     ValidateObjectID,
     ValidateAddress,
@@ -23,76 +25,26 @@ from pysui_gadgets.utils.cmd_arg_validators import (
 )
 
 
-# For dsl gadget
-def dsl_parser(in_args: list) -> argparse.Namespace:
-    """build_parser Simple command line for app.
-
-    :param in_args: list of argument strings
-    :type in_args: list
-    :return: Parse results
-    :rtype: argparse.Namespace
-    """
+def _base_parser(pconfig: PysuiConfiguration) -> argparse.ArgumentParser:
+    """Basic parser setting for all commands."""
     parser = argparse.ArgumentParser(
-        add_help=True, usage="%(prog)s [--command_options]"
-    )
-
-    parser.add_argument(
-        "-m",
-        "--move-package-id",
-        dest="package_id",
-        required=True,
-        help="The move package ObjectID on the chain",
-        action=ValidateObjectID,
-    )
-    command_group = parser.add_mutually_exclusive_group()
-    command_group.add_argument(
-        "-e",
-        "--exclude-modules",
-        dest="excludes",
-        required=False,
-        nargs="+",
-        type=str,
-        help="Exclude modules from DL generation",
-    )
-    command_group.add_argument(
-        "-i",
-        "--include-modules",
-        dest="includes",
-        required=False,
-        nargs="+",
-        type=str,
-        help="Only include modules for DSL generation",
-    )
-
-    parser.add_argument(
-        "-p",
-        "--generation-root-path",
-        dest="root_path",
-        required=True,
-        help="Identify root path to generate package and modules to",
-    )
-
-    parser.add_argument(
-        "-o",
-        "--overwrite-target-files",
-        dest="overwrite_modules",
-        required=False,
-        action="store_true",
-        help="Overwrite existing files during generation",
+        add_help=True,
+        usage="%(prog)s [options]",
+        description="",
     )
     parser.add_argument(
-        "-a",
-        "--generate-async",
-        dest="use_async",
+        "--profile",
+        dest="profile_name",
+        choices=pconfig.profile_names(),
+        default="devnet",
         required=False,
-        action="store_true",
-        help="Generate async module otherwise default to synchrounous",
+        help="The GraphQL profile representing target GraphQL node. Default to 'devnet'",
     )
-    return parser.parse_args(in_args if in_args else ["--help"])
+    return parser
 
 
 # For to-one gadget
-def to_one_parser(in_args: list) -> argparse.Namespace:
+def to_one_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
     """build_parser Simple command line for app.
 
     :param in_args: list of argument strings
@@ -100,11 +52,11 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
     :return: Parse results
     :rtype: argparse.Namespace
     """
-    parser = argparse.ArgumentParser(
-        add_help=True,
-        usage="%(prog)s [--command_options]",
-        description="Merges all SUI Gas mists 'to one' SUI Gas object for an address",
+    parser = _base_parser(pconfig)
+    parser.description = (
+        "Merges all SUI Gas mists 'to one' SUI Gas object for an address"
     )
+    parser.usage = "%(prog)s [--command_options]"
     addy_arg_group = parser.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument(
         "-o",
@@ -140,7 +92,7 @@ def to_one_parser(in_args: list) -> argparse.Namespace:
 
 
 # for package gadget
-def package_parser(in_args: list) -> argparse.Namespace:
+def package_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
     """build_parser Simple command line for app.
 
     :param in_args: list of argument strings
@@ -148,10 +100,8 @@ def package_parser(in_args: list) -> argparse.Namespace:
     :return: Parse results
     :rtype: argparse.Namespace
     """
-    parser = argparse.ArgumentParser(
-        add_help=True, usage="%(prog)s command [--command_options]"
-    )
-
+    parser = _base_parser(pconfig)
+    parser.description = "Display package information"
     subparser = parser.add_subparsers(title="commands", help="")
 
     # Simple listing of modules in package
@@ -246,50 +196,12 @@ def package_parser(in_args: list) -> argparse.Namespace:
     return parser.parse_args(in_args if in_args else ["--help"])
 
 
-# for module gadget
-def module_parser(in_args: list) -> argparse.Namespace:
-    """module_parser Simple command line for module execution.
-
-    :param in_args: list of argument strings
-    :type in_args: list
-    :return: Parse results
-    :rtype: argparse.Namespace
-    """
-    parser = argparse.ArgumentParser(
-        add_help=True,
-        usage="%(prog)s [--command_options]",
-        description="Deserialize and analyze Sui module byte-codes",
-    )
-    command_group = parser.add_mutually_exclusive_group()
-    command_group.add_argument(
-        "-p",
-        "--package-project",
-        dest="prj_folder",
-        required=False,
-        action=ValidatePackageDir,
-        # type=str,
-        help="Ingest modules from sui move project folder",
-    )
-    command_group.add_argument(
-        "-a",
-        "--package-address",
-        dest="chn_package",
-        required=False,
-        action=ValidateObjectID,
-        help="Ingest modules from chain package address",
-    )
-
-    return parser.parse_args(in_args if in_args else ["--help"])
-
-
 # for splay gadget
-def splay_parser(in_args: list) -> argparse.Namespace:
+def splay_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
     """splay_parser Simple command args for splay execution."""
-    parser = argparse.ArgumentParser(
-        add_help=True,
-        usage="%(prog)s [options]",
-        description="Evenly distribute gas objects across one or more addresses. Can also splay to oneself.",
-    )
+    parser = _base_parser(pconfig)
+    parser.description = "Evenly distribute gas objects across one or more addresses. Can also splay to oneself"
+
     addy_arg_group = parser.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument(
         "-o",
@@ -344,13 +256,11 @@ def splay_parser(in_args: list) -> argparse.Namespace:
 
 
 # for version history gadget
-def vh_parser(in_args: list) -> argparse.Namespace:
+def vh_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
     """vh Simple command args for history scanning."""
-    parser = argparse.ArgumentParser(
-        add_help=True,
-        usage="%(prog)s [--command_options]",
-        description="Discover history of object versions",
-    )
+    parser = _base_parser(pconfig)
+    parser.description = "Discover history of object versions"
+
     parser.add_argument(
         "-o",
         "--object",
@@ -358,6 +268,31 @@ def vh_parser(in_args: list) -> argparse.Namespace:
         required=True,
         action=ValidateObjectID,
         help="object identifier.",
+    )
+    me_parser = parser.add_mutually_exclusive_group(required=True)
+    me_parser.add_argument(
+        "-i",
+        "--for-includes",
+        help="Only history when object included in transaction",
+        default=False,
+        action="store_true",
+        dest="includes",
+    )
+    me_parser.add_argument(
+        "-c",
+        "--for-changes",
+        help="Only history when object changed in transaction",
+        default=False,
+        action="store_true",
+        dest="changes",
+    )
+    me_parser.add_argument(
+        "-b",
+        "--for-both",
+        help="History for object whether included or changed in transaction",
+        default=False,
+        action="store_true",
+        dest="both",
     )
     parser.add_argument(
         "-j",

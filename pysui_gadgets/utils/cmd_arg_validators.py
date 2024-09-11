@@ -18,6 +18,7 @@ import argparse
 from pathlib import Path
 from typing import Any, Sequence
 from pysui import ObjectID, SuiAddress
+from pysui.sui.sui_types.address import valid_sui_address
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
 
 
@@ -42,9 +43,12 @@ class ValidateAddress(argparse.Action):
         """Validate."""
         try:
             if isinstance(values, list):
-                values = [SuiAddress(v) for v in values]
+                for ival in values:
+                    if not valid_sui_address(ival):
+                        raise ValueError("")
             else:
-                values = SuiAddress(values)
+                if not valid_sui_address(values):
+                    raise ValueError("")
         except ValueError:
             parser.error(f"'{values}' is not valid address.")
             sys.exit(-1)

@@ -17,7 +17,7 @@ Provides low level transaction execution prep or submit options.
 """
 import base64
 from typing import Optional
-from pysui import SuiAddress, SuiConfig
+from pysui import PysuiConfiguration
 from pysui.sui.sui_txresults.single_tx import AddressOwner, SuiCoinObject
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
@@ -36,7 +36,7 @@ def add_owner_to_gas_object(owner: str, gas_coin: SuiCoinObject) -> SuiCoinObjec
 
 
 def util_resolve_owner(
-    config: SuiConfig, owner: Optional[SuiAddress], alias: Optional[str]
+    config: PysuiConfiguration, owner: Optional[str], alias: Optional[str]
 ):
     """util_resolve_owner Resolve ownership between implicit or alias values.
 
@@ -51,19 +51,20 @@ def util_resolve_owner(
     :raises ValueError: If both owner and alias are None
     :raises ValueError: If resulting owner is not a member of the configuration
     """
-    owner_designate: SuiAddress = None
+    owner_designate: str = None
     if owner:
-        owner_designate: SuiAddress = owner
+        owner_designate: str = owner
     elif alias:
-        owner_designate: SuiAddress = config.addr4al(alias)
+        owner_designate: str = config.address_for_alias(alias_name=alias)
     else:
         raise ValueError(f"Owner not designated.")
 
     if owner_designate != config.active_address:
-        if owner_designate.address not in config.addresses:
-            raise ValueError(f"Missing private key for {owner_designate.address}")
-        print(f"Setting coin owner to {owner_designate.address}")
-        config.set_active_address(owner_designate)
+
+        if owner_designate not in config.active_group.address_list:
+            raise ValueError(f"Missing private key for {owner_designate}")
+        print(f"Setting coin owner to {owner_designate}")
+        config.make_active(address=owner_designate)
 
 
 def util_get_all_owner_gas(
@@ -108,7 +109,7 @@ def util_inspect(
     print(tx_kind.to_json(indent=2))
     tx_b64 = base64.b64encode(tx_kind.serialize()).decode()
     options = {
-        "sender": client.config.active_address.address,
+        "sender": client.config.active_address,
         # "gasObjects": [
         #     {
         #         "address": target_gas.object_id,
@@ -129,9 +130,10 @@ def util_execute(
     client: SuiGQLClient, txn: SuiTransaction, target_gas=pgql_type.SuiCoinObjectGQL
 ):
     """."""
-    tx_b64, sig_array = txn.build_and_sign(use_gas_objects=[target_gas])
     result = client.execute_query_node(
-        with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+        with_node=qn.ExecuteTransaction(
+            **txn.build_and_sign(use_gas_objects=[target_gas])
+        )
     )
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
