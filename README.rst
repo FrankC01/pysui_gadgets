@@ -1,6 +1,8 @@
 pysui-gadgets
 =============
 
+THIS REPO IS ARCHIVED. FUNCTIONS IN GADGETS WILL BE INCORPORATED INTO [pysui](https://github.com/FrankC01/pysui)
+
 pysui-gadgets includes tools and utilities that work with the pysui SDK.
 
 Gadgets included:
